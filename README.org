@@ -1,0 +1,57 @@
+#+TITLE: Druix: Drew's (G)uix
+
+Druix is a distribution of GNU/Linux that's focused on usability. It is based
+off of a GNU Guix Channel, amoung other things.
+
+GNU Guix is a cross-platform package manager and a tool to instantiate and
+manage Unix-like operating systems.
+
+Please do NOT promote this repository on any official Guix communication
+channels, such as their mailing lists or IRC channel, even in response to
+support requests! This is to show respect for the Guix project’s strict policy
+against recommending nonfree software, and to avoid any unnecessary hostility.
+
+* NonGuix/NonGNU
+
+#+begin_quote
+Nonguix is a software repository for the GNU Guix package manager, which
+packages some software which cannot be included in the official distribution for
+ethical or policy-related reasons.
+
+-- https://gitlab.com/nonguix/nonguix
+#+end_quote
+
+Most of my PC's are Thinkpads. Most of them use a "non-free" driver for WiFi,
+and they are all Intel or AMD, with firmware updates, etc.
+
+Because of that they require a "non-free" linux kernel and some binary blobs
+that Guix refuses to include (for good reason!). My priorities and philosophies
+somewhat differ and my freedom is my ability to choose "non-free" hardware :).
+
+I want a single channel AKA monorepo even though I am including external repos. That's where a subtree comes into play.
+
+** Clone the upstream repo
+
+#+begin_src shell
+cd ~/me/guix/src
+git clone git@gitlab.com:nonguix/nonguix.git
+#+end_src
+
+** Split the two subtrees
+
+#+begin_src shell
+cd nonguix;
+git subtree split --prefix=nonguix --branch=nonguix
+git subtree split --prefix=nongnu --branch=nongnu
+#+end_src
+
+** Also add the README as another branch
+
+Change README.org into nonguix.org and we'll stick it in a doc/ folder.
+``
+#+begin_src shell
+git branch --track README
+rm -r .giti* .gu* .d* COPYING news.txt nong*
+git mv README.org nonguix.org
+git commit -m "Remove all but README->nonguix.org"
+#+end_src
