@@ -1,0 +1,521 @@
+#+TITLE: Versions: Automagic "unstable" revisions
+
+As a bleeding-edge hacker I often need to use the last commit in the main/master branch as a starting point. Then, I may need a commit that was that, but now is in the past.
+
+It could be all defined manually, but as a programmer we program programs, so here we go.
+
+* Usage
+
+We want to package *Gerbil*[fn:0] which is a meta-dialect of scheme. To do that
+we go meta on *Guile*! :)
+
+** Ensure a new "versions" module
+
+All we need to do is this.
+
+#+begin_src scheme
+(use-modules ((druix versions) #:prefix v:))
+(v:ensure-druix-versions
+ 'gerbil-unstable v:<druix-version-git>
+ #:repo "https://github.com/vyzo/gerbil.git")
+
+;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil-unstable.scm"
+#+end_src
+
+What that does the first time around is create a file
+~./druix/versions/gerbil-unstable.scm~ that looks like the following.
+
+#+begin_src scheme
+(define-module (druix versions gerbil-unstable)
+  #:use-module (druix versions) #:use-module (oop goops) #:export (versions))
+(define versions
+  (list
+    (make <druix-version-git>
+      #:major 0 #:minor 16 #:patch #f #:revision 187
+      #:sha256 "0yqsjyk1gzfnvp4rvs8q06v7vcdgbnpw9bpa03f36zkzp466gdyl"
+      #:repo "https://github.com/vyzo/gerbil.git"
+      #:commit "7e8b4baaf563b7cd804b3b653d4823b9762f5c87")))
+#+end_src
+
+** Create a package with that version
+
+#+begin_src scheme :tangle "../druix/packages/scheme/gerbil-unstable.scm"
+(define-module (druix packages scheme gerbil-unstable)
+  #:use-module (druix packages scheme gambit-c-unstable)
+  #:use-module (druix packages scheme gambit-c-unstable)
+  #:use-module ((druix versions gerbil-unstable) #:prefix dvg:)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module (guix packages)
+  #:use-module (guix build-system gnu)
+  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module (gnu packages compression)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages base)
+  #:use-module (guix git-download)
+  #:use-module (guix derivations)
+  #:use-module (gnu packages tls)
+  #:use-module (gnu packages web)
+  #:use-module (gnu packages sqlite)
+  #:use-module (gnu packages xml)
+  #:use-module (gnu packages databases)
+  #:use-module (guix store))
+
+(define unstable-version (car dvg:versions))
+
+(define-public gerbil-unstable
+  (let* ((v (v:druix-version unstable-version))
+         (c (v:commit unstable-version))
+         (s (v:sha256 unstable-version))
+         (git-uri (v:repo unstable-version))
+         (name "gerbil-unstable")
+         (pv (string-append "PACKAGE_VERSION='v" v "'"))
+         (configure-flags
+          `(,pv "--enable-libxml" "--enable-libyaml" "--enable-zlib"
+                "--enable-sqlite" "--enable-mysql" "--enable-lmdb"
+                "--enable-leveldb")))
+    (package
+      (name name)
+      (version v)
+      (source
+       (origin
+         (method git-fetch)
+         (uri
+          (git-reference (url git-uri)
+                         (commit c)))
+         (sha256 (base32 s))
+         (file-name (git-file-name name s))))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:phases
+         (modify-phases %standard-phases
+           (delete 'check)
+                  ;(add-before 'build 'make-writable
+           (replace 'build
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let ((out (assoc-ref outputs "out")))
+                        (invoke "chmod" "-R" "777" ".")
+                        ;; (invoke "make configure")
+                        ;; (invoke "make stage0")
+                        ;; (invoke "make stage1")
+                        (setenv "PATH" (string-append (getcwd) "/bin:"
+                                                    (getenv "PATH")))
+                        ;;    build.nix:
+                        ;;  export GERBIL_GXC=$PWD/bin/gxc
+                        (setenv "GERBIL_GXC" (string-append
+                                              (getcwd) "/bin/gxc"))
+
+                        ;; build.nix:    export GERBIL_BASE=$PWD
+                        (setenv "GERBIL_BASE" (getcwd))
+                        ;; build.nix:    export GERBIL_HOME=$PWD
+                        (setenv "GERBIL_HOME" (getcwd))
+                        ;; build.nix:    export GERBIL_PATH=$PWD/lib
+                        (setenv "GERBIL_PATH" (getcwd))
+
+
+                        (invoke "make"))))
+           (add-before 'patch-generated-file-shebangs 'fake-gx
+               (lambda _
+                 (setenv "PATH" (string-append (getcwd) "/bin:"
+                                               (getenv "PATH")))
+                 (invoke "touch" "bin/gxi")
+                 (invoke "chmod" "755" "bin/gxi"    )
+                 (invoke "touch" "bin/gxc")
+                 (invoke "chmod" "755" "bin/gxc"))))
+         #:configure-flags '(,@configure-flags)))
+
+      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)
+                ))
+      (native-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
+                       ("openssl" ,openssl)
+                       ("lmdb" ,lmdb)
+                       ("leveldb" ,leveldb)
+                       ("sqlite" ,sqlite)
+                       ("mysql" ,mysql)
+                       ("libyaml" ,libyaml)
+                       ("libxml2" ,libxml2)
+                       ("zlib" ,zlib)))
+      (home-page "https://cons.io")
+      (license (list l:lgpl2.1+ l:asl2.0))
+      (synopsis "A meta-dialect of Scheme with post-modern features")
+      (description "Gerbil Scheme
+
+Gerbil is an opinionated dialect of Scheme designed for Systems Programming, with a state of the art macro and module system on top of the Gambit runtime.
+
+The macro system is based on quote-syntax, and provides the full meta-syntactic tower with a native implementation of syntax-case. It also provides a full-blown module system, similar to PLT Scheme's (sorry, Racket) modules. The main difference from Racket is that Gerbil modules are single instantiation, supporting high performance ahead of time compilation and compiled macros."))))
+
+
+
+#+end_src
+* Entry Point: ~ensure-druix-versions~
+
+#+begin_src scheme :noweb-ref ensure-druix-versions
+(define (get-druix-versions-path pkg-name)
+  (%search-load-path
+   (string-append "druix/versions/" (symbol->string pkg-name))))
+
+(define (druix-versions-folder)
+  (string-append (dirname (%search-load-path "druix/versions"))
+                 "/versions"))
+
+(define (ensure-druix-versions name klass . args)
+  (define obj (apply make klass args))
+  (ensure-druix-versions-from-object name obj))
+
+(define (create-druix-versions-file name versions)
+  ;; => string
+  (with-output-to-string
+    (lambda ()
+      (write (make-define-module-form-for-versions name))
+      (newline)
+      (display (string<-druix-versions versions)))))
+
+(define (write-druix-versions-file name versions)
+  (define vfldr (druix-versions-folder))
+  (define fname (string-append vfldr "/" (symbol->string name) ".scm"))
+  (with-output-to-file fname
+    (lambda () (display (create-druix-versions-file name versions))))
+  fname)
+
+(define-generic ensure-druix-versions-from-object)
+(define-method (ensure-druix-versions-from-object
+                name (obj <druix-version-git>))
+  (define vpath (get-druix-versions-path name))
+  (define vfldr (druix-versions-folder))
+  (if (not vpath)
+      (let* ((repo (ensure-git-repo (repo obj)))
+             (versions (list (druix-version<-git-repo (class-of obj) repo))))
+        (write-druix-versions-file name versions))
+      (let ((versions (update-druix-versions name)))
+        (if (not versions) vpath
+            (write-druix-versions-file name versions)))))
+
+#+end_src
+* Version Numbers
+
+Versioning is very important. Most of the time we simply want the most "recent",
+so often care not. That means the care is placed on the package manager, which
+in this case is defined by us.
+
+Metacircles aside, we do need to have a versioning that makes sense to both the
+end user and the package management software.
+
+** First Case, gambit-c-unstable.
+:PROPERTIES:
+:CUSTOM_ID: versionFirstCase
+:END:
+
+In the end what we desire for our first case is the following file used to
+autogenerate "itself" with a newer version.
+
+#+begin_src scheme :tangle ../druix/versions/gambit-c-unstable.scm :mkdirp t
+(define-module (druix versions gambit-c-unstable)
+  #:use-module (druix versions)
+  #:use-module (oop goops)
+  #:export (versions))
+
+(define versions
+  (list
+   (make <druix-version-git>
+    #:major 4 #:minor 3 #:patch 9 #:revision 0
+    #:sha256 "17f1zyvs0qazqbqczbsspqrz2vzsabg8kbz2xf1z5x6xxxvkqimc"
+    #:repo "https://github.com/gambit/gambit.git"
+    #:commit "1d5b01330881b3e26345dbaabfd35bbdfae36330")))
+#+end_src
+
+** ~<druix-version>~ class
+
+#+begin_src scheme :noweb-ref druix-version-class
+;;; (use-modules (oop goops))
+
+(define-class <druix-version> ()
+  (major #:accessor major #:init-value 0 #:init-keyword #:major)
+  (minor #:accessor minor #:init-value 0  #:init-keyword #:minor)
+  (patch #:accessor patch #:init-value #f #:init-keyword #:patch)
+  (revision #:accessor revision #:init-value #f #:init-keyword #:revision)
+  (sha256 #:accessor sha256 #:init-value #f #:init-keyword #:sha256))
+#+end_src
+
+** ~druix-version~ generic function
+
+#+begin_src scheme :noweb-ref druix-version-fn
+(define-generic druix-version)
+
+(define-method (druix-version (v <druix-version>))
+  (string-append
+   (number->string (major v)) "."
+   (number->string (minor v))
+   (let ((p (patch v)))
+     (if p (string-append "." (number->string p)) ""))
+   (let ((rev (revision v)))
+     (if rev (string-append "-" (number->string rev)) ""))))
+#+end_src
+
+** ~parse-druix-version~
+
+As luck would have it, both my starting git repos have a tag that defines the
+version. ~"v0.16-187-g7e8b4baa"~ for gerbil and ~"v4.9.3-1413-g89609f52"~ for
+gambit.
+
+It seems that is ~<tag>-<revision>-<commit>~. The [[#druixVersionGit][~<druix-version-git>~ subclass]]
+takes care of the commit, and our ~<druix-version>~ does not have such a thing,
+so that can be ignored.
+
+#+begin_src scheme :noweb-ref alist-parse-dv
+(define (alist<-parse-druix-version str)
+  (define version '())
+  (define semantic '(major minor patch))
+  (define (vnum s start)
+    (string-match "^[v|\\.]([0-9]+)" s start))
+  (define (rev s start)
+    (string-match "-([0-9]+)-" s start))
+  (let vnums ((t semantic)
+              (start 0))
+    (define m?
+      (if (eq? #t t)
+          ;; not on revision and failed
+          #f
+          (if (null? t)
+              ;; done semantic, onto revision
+              (rev str start)
+              ;; semantic version
+              (vnum str start))))
+    (if (not m?)
+        (if (not (null? t))
+            ;;; try for revision which is always there.
+            (vnums '() start)
+            (if (null? version) #f (reverse version)))
+        ;;; there was a match! put it in versions and continue
+        (let ((n (eval-string (match:substring m? 1)))
+              (s (match:end m?)))
+          (set! version
+                (cons* (cons (if (null? t) 'revision (car t)) n)
+                       version))
+          (vnums (or (null? t) (cdr t)) s)))))
+#+end_src
+
+** ~druix-version<-git-repo~
+
+Now that we have that, using a bunch of [[file:utils.org][(druix utils)]] we can make a [[*~<druix-version-git>~
+ subclass][~<druix-version-git>~]] from the most recent commit by default, or whatever the
+passed checkout (~repo-or-uri~) has.
+
+#+begin_src scheme :noweb-ref druix-version<-git-repo
+(define (druix-version<-git-repo klass repo-or-uri . uri-args)
+  (define grepo (apply ensure-git-repo repo-or-uri uri-args))
+  (define gcommit (git-repo-current-commit grepo))
+  (define gdesc (git-repo-describe--tags grepo))
+  (define valist (alist<-parse-druix-version gdesc))
+  (define gsha256 (sha256<-directory grepo))
+  (define vrepo
+    (with-directory-excursion grepo
+      ($cmd "git" "remote" "get-url" "origin")))
+  (make klass
+    #:major (assoc-ref valist 'major)
+    #:minor (assoc-ref valist 'minor)
+    #:major (assoc-ref valist 'major)
+    #:revision (assoc-ref valist 'revision)
+    #:repo vrepo
+    #:commit gcommit
+    #:sha256 gsha256))
+#+end_src
+** ~make-form<-druix-version~, metatime!
+
+This remakes a ~make <class> initargs ...~ form.
+
+#+begin_src scheme :noweb-ref form-from
+(define-generic make-form<-druix-version)
+(define-method (make-form<-druix-version (v <druix-version>))
+  (define slots
+    (filter (lambda (sd)
+              (slot-bound? v (slot-definition-name sd)))
+            (filter slot-definition-init-keyword
+                    (class-slots (class-of v)))))
+
+  `(make ,(class-name (class-of v))
+     ,@(let sdv ((sds slots))
+    (if (null? sds) sds
+        (let ((sd (car sds)))
+          (cons* (slot-definition-init-keyword sd)
+                 (slot-ref v (slot-definition-name sd))
+                 (sdv (cdr sds))))))))
+
+#+end_src
+
+** ~<druix-version-git>~ subclass
+:PROPERTIES:
+:CUSTOM_ID: druixVersionGit
+:END:
+
+#+begin_src scheme :noweb-ref druix-version-git-class
+(define-class <druix-version-git> (<druix-version>)
+  (repo #:accessor repo #:init-keyword #:repo)
+  (commit #:accessor commit #:init-keyword #:commit))
+
+(define-method (druix-version (v <druix-version-git>))
+  (define c (string-copy (commit v) 0 8))
+  (string-append (next-method) "-g" c))
+#+end_src
+
+
+* ~generate-version-file~
+
+The entire point behind this code is to avoid needing to do something similar the following /for every new commit in all unstable releases/.
+
+#+begin_src shell
+cd `mktemp -d`
+git clone --depth=1 https://github.com/gambit/gambit.git
+cd gambit
+
+_GambcCommit=`git log -1 --format="%H"`
+_Gambc256=$(guix hash -xr "`pwd`")
+echo commit: $_GambcCommit ; echo sha256: $_Gambc256
+#+end_src
+
+*=>*
+| commit: | 0902421dbbdab0f039ca997861adb0e1f754b463             |
+| sha256: | 13f9xdi871213p2dbxi4p6kynydhjm7mgqcay149n8dwl6wnz2ih |
+
+In fact, if you notice, those numbers are different than our initial [[#versionFirstCase][First Case]],
+which means that this is exactly what we want to generate our new version!
+
+** ~define-module-form<-druix-version~
+
+The file starts with a ~define-module~
+
+#+begin_src scheme :noweb-ref define-module-form
+(define (make-define-module-form-for-versions name)
+  `(define-module
+     (druix versions ,(if (string? name) (string->symbol name) name))
+     #:use-module (druix versions)
+     #:use-module (oop goops)
+     #:export (versions)))
+#+end_src
+
+Let's try it out.
+
+#+begin_src scheme
+> (make-define-module-form-for-versions 'gambit-c-unstable)
+=> (define-module (druix versions gambit-c-unstable)
+     #:use-module (druix versions)
+     #:use-module (oop goops)
+     #:export (versions))
+#+end_src
+
+** ~update-druix-versions-file!~.
+
+For our first one it's simple. We'll download a ~repo~ and check the first commit hash. If it does not match our ~commit~ we need a new version.
+
+
+#+begin_src scheme :noweb-ref update-druix-version
+
+;; => Either a new version or #f if it does not need updating
+(define-generic update-druix-version)
+
+(define-method (update-druix-version (v <druix-version>))
+  ;; For now just say it does not need updating
+  #f)
+
+(define-method (update-druix-version (v <druix-version-git>))
+  (let* ((src (git-clone-repo (repo v) "--depth=1"))
+         (src-commit (git-repo-current-commit src)))
+    (if (string=? src-commit (commit v)) #f
+        (make (class-of v)
+          #:major (major v) #:minor (minor v) #:patch (patch v)
+          #:revision (1+ (revision v))
+          #:repo (repo v)
+          #:commit src-commit
+          #:sha256 (sha256<-directory src)))))
+
+(define (update-druix-versions pkg-name)
+  (define versions (eval `(@ (druix versions ,pkg-name) versions)
+                         (interaction-environment)))
+  (define main-version (car versions))
+  (define update? (update-druix-version main-version))
+
+  (if (not update?) #f
+      (cons update? versions)))
+
+(define (string<-druix-versions vs)
+  (with-output-to-string
+    (lambda ()
+      (display "(define versions \n  (list \n")
+      (let ((one #t))
+      (map (lambda (form)
+             (if (not one) (newline) (set! one #f))
+             (display "    ")
+             (write form))
+           (map make-form<-druix-version vs))
+      (display "))")
+      (newline)))))
+
+(define (new-versions-file-values<-druix-package-name pkg-name)
+  ;; (values new-versions? pathname contents-as-string)
+  (define path (%search-load-path
+                (string-append "druix/versions/" (symbol->string pkg-name))))
+  (define new-versions? (update-druix-versions pkg-name))
+  (define cnts
+    (if new-versions?
+        (with-output-to-string
+          (lambda ()
+            (write (make-define-module-form-for-versions pkg-name))
+            (newline)
+            (display (string<-druix-versions new-versions?))))
+        (call-with-input-file path get-string-all)))
+  (values (if (not (eq? new-versions? #f)) #t #f)
+          path
+          cnts))
+#+end_src
+
+
+
+* /File/ ~druix/versions.scm~
+
+#+begin_src scheme :noweb yes :tangle ../druix/versions.scm
+(define-module (druix versions)
+  #:use-module (oop goops)
+  #:use-module (druix utils)
+  #:use-module (ice-9 textual-ports)
+  #:use-module (ice-9 regex)
+  #:use-module (guix build utils)
+  #:export
+  (<druix-version>
+   major minor patch revision sha256
+
+   <druix-version-git>
+   repo commit
+
+   alist<-parse-druix-version
+   druix-version<-git-repo
+
+   druix-version form<-druix-version
+   make-define-module-form-for-versions
+
+   ensure-druix-versions
+
+   update-druix-version update-druix-versions
+
+   string<-druix-versions
+   new-versions-file-values<-druix-package-name))
+
+<<druix-version-class>>
+<<druix-version-fn>>
+
+<<form-from>>
+<<druix-version-git-class>>
+
+<<define-module-form>>
+
+<<update-druix-version>>
+
+<<alist-parse-dv>>
+
+<<druix-version<-git-repo>>
+
+<<ensure-druix-versions>>
+
+
+#+end_src
+
+* Footnotes
+
+[fn:0] https://cons.io

@@ -1,0 +1,109 @@
+#+TITLE: Utils, as we need 'em.
+
+* General
+
+Here's what we need so far.
+
+#+begin_src scheme :noweb-ref cmd-line
+(define (cmd-line command-line)
+     (let* ((port (open-input-pipe command-line))
+            (str (read-line port))) ; from (ice-9 rdelim)
+  (close-pipe port)
+  str))
+
+(define ($cmd prog . args)
+  (let ((p (apply open-pipe* OPEN_READ prog args))
+        (str (string-trim-right (get-string-all p) #\newline)))
+    (close-pipe port)
+    str))
+
+(define (sha256<-directory dir)
+  (with-directory-excursion dir
+    (cmd-line "guix hash -xr .")))
+#+end_src
+* Git
+
+First thing is we want to generate a ~sha256~ for a certain commit.
+
+For that we need to download the repostory. We'll make a temp directory and
+return the repo inside that.
+
+#+begin_src scheme :noweb-ref git-clone-repo
+(define (git-clone-repo repo . args)
+  ;; => /"path of repo"/
+  (define srcdir (mkdtemp "/tmp/gambc-XXXXXX"))
+  (define src (basename repo ".git"))
+  (with-directory-excursion srcdir
+    (apply invoke "git" "clone" (append args (list repo)))
+    (with-directory-excursion src (getcwd))))
+#+end_src
+
+
+We may already have the repo, so we need to ~ensure-git-repo~ to make sure of
+it.
+
+#+begin_src scheme :noweb-ref ensure-git-repo
+(define (ensure-git-repo repo . args)
+  (if (not (string-contains  repo ":")) repo
+      (apply git-clone-repo repo args)))
+#+end_src
+
+Now sometimes we want to see the first commit.
+
+#+begin_src scheme :noweb-ref git-repo-current-commit
+(define (git-repo-current-commit repo . args)
+  (define srcdir (apply ensure-git-repo repo args))
+    (with-directory-excursion srcdir
+      (cmd-line "git log -1 --format=\"%H\"")))
+#+end_src
+
+Often the version is within the tags. We get them here.
+
+#+begin_src scheme :noweb-ref git-describe-tags
+(define* (git-repo-describe--tags repo-or-url #:key (abbrev #f))
+  (define repo (ensure-git-repo repo-or-url))
+  (define (cmd)
+    (cmd-line (apply string-append "git describe --tags"
+           (if abbrev (list " --abbrev=" (number->string abbrev)) '()))))
+  (with-directory-excursion repo (cmd)))
+#+end_src
+
+* /File/ ~druix/utils.scm~
+
+#+begin_src scheme :tangle ../druix/utils.scm :noweb yes
+(define-module (druix utils)
+  #:use-module (ice-9 popen)
+  #:use-module (ice-9 rdelim)
+  #:use-module (ice-9 textual-ports)
+  #:use-module (guix build utils)
+  #:export
+  (cmd-line $cmd sha256<-directory
+   git-clone-repo ensure-git-repo
+   git-repo-current-commit
+   git-repo-describe--tags))
+
+<<cmd-line>>
+
+<<git-clone-repo>>
+
+<<ensure-git-repo>>
+
+<<git-repo-current-commit>>
+
+<<git-describe-tags>>
+
+(define (git-repo-get-commit-and-sha256 repo)
+  ;;;   => ("commit" . "sha256")
+
+  (define srcdir (mkdtemp "/tmp/gambc-XXXXXX"))
+  (define src (basename repo ".git"))
+  (define commit #f)
+  (define sha256 #f)
+
+  (with-directory-excursion srcdir
+    (invoke "git" "clone" "--depth=1" repo)
+    (chdir src)
+    (set! commit (cmd-line "git log -1 --format=\"%H\""))
+    (set! sha256 (cmd-line "guix hash -xr .")))
+  (cons commit sha256))
+#+end_src

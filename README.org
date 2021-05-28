@@ -11,6 +11,16 @@ channels, such as their mailing lists or IRC channel, even in response to
 support requests! This is to show respect for the Guix project’s strict policy
 against recommending nonfree software, and to avoid any unnecessary hostility.
 
+* Usage
+
+Right now it's not (yet) a channel, so clone the repo and ~-L~ it.
+
+ie:
+
+#+begin_src shell
+guix install -L ~/me/guix/src/druix/ gambit-c-unstable
+#+end_src
+
 * NonGuix/NonGNU
 
 #+begin_quote
@@ -28,30 +38,9 @@ Because of that they require a "non-free" linux kernel and some binary blobs
 that Guix refuses to include (for good reason!). My priorities and philosophies
 somewhat differ and my freedom is my ability to choose "non-free" hardware :).
 
-I want a single channel AKA monorepo even though I am including external repos. That's where a subtree comes into play.
+Have a look [[file:doc/nonguix.org::*NonGuix/NonGNU in Druix][here]] for details.
 
-** Clone the upstream repo
+* Versioning and git
 
-#+begin_src shell
-cd ~/me/guix/src
-git clone git@gitlab.com:nonguix/nonguix.git
-#+end_src
 
-** Split the two subtrees
-
-#+begin_src shell
-cd nonguix;
-git subtree split --prefix=nonguix --branch=nonguix
-git subtree split --prefix=nongnu --branch=nongnu
-#+end_src
-
-** Also add the README as another branch
-
-Change README.org into nonguix.org and we'll stick it in a doc/ folder.
-``
-#+begin_src shell
-git branch --track README
-rm -r .giti* .gu* .d* COPYING news.txt nong*
-git mv README.org nonguix.org
-git commit -m "Remove all but README->nonguix.org"
-#+end_src
+* Scheme: Gambit and Gerbil, "unstable"
