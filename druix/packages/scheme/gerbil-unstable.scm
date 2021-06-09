@@ -1,6 +1,6 @@
 (define-module (druix packages scheme gerbil-unstable)
   #:use-module (druix packages scheme gambit-c-unstable)
-  #:use-module (druix packages scheme gambit-c-unstable)
+  #:use-module (gnu packages scheme)
   #:use-module ((druix versions gerbil-unstable) #:prefix dvg:)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
@@ -20,18 +20,59 @@
 
 (define unstable-version (car dvg:versions))
 
-(define-public gerbil-unstable
-  (let* ((v (v:druix-version unstable-version))
-         (c (v:commit unstable-version))
-         (s (v:sha256 unstable-version))
-         (git-uri (v:repo unstable-version))
+(define (make-gerbil-unstable-configure-form flags)
+  `(lambda* (#:key build target native-inputs inputs outputs
+             (configure-flags '()) out-of-source?
+             #:allow-other-keys)
+     (let* ((gambc (with-directory-excursion
+                    (string-append (dirname (which "gsc"))
+                                   "/../")
+                    (getcwd)))
+            (with-g (string-append "--with-gambit=" gambc))
+            (conflags (list with-g ,@flags))
+            (conf (assoc-ref %standard-phases 'configure)))
+       (conf #:build build #:target target #:native-inputs native-inputs
+             #:inputs inputs #:outputs outputs
+             #:configure-flags conflags))))
+
+(define gerbil-unstable-before-build-form
+  '(lambda _
+     (invoke "chmod" "-R" "777" ".")
+     (setenv "PATH" (string-append (getcwd) "/bin:" (getenv "PATH")))
+     (setenv "GERBIL_GXC" (string-append (getcwd) "/bin/gxc"))
+     (setenv "GERBIL_BASE" (getcwd))
+     (setenv "GERBIL_HOME" (getcwd))
+     (setenv "GERBIL_PATH" (getcwd))
+     #t))
+
+;;; Gerbil uses itself to compile itself. Because we patch #!/usr/bin/env, and
+;;; some of what are called "generated-file"'s rely on a shebang that works, we
+;;; fake them here.
+
+(define gerbil-unstable-fake-/bin
+  '(lambda _
+     (invoke "echo" "here bin?")
+     (invoke "find" ".")
+     (setenv "PATH"
+             (string-append (getcwd) "/bin:" (getenv "PATH")))
+     (for-each (lambda (exe)
+                 (invoke "touch" exe) (invoke "chmod" "755" exe))
+               '("bin/gxi" "bin/gxi-script" "bin/gxc"))
+  #t))
+
+(define (make-gerbil-package version)
+   (let* ((v (v:druix-version version))
+         (c (v:commit version))
+         (s (v:sha256 version))
+         (git-uri (v:repo version))
          (name "gerbil-unstable")
-         (pv (string-append "PACKAGE_VERSION='v" v "'"))
+         (pv (string-append "PACKAGE_VERSION=v" v ""))
          (configure-flags
           `(,pv "--enable-libxml" "--enable-libyaml" "--enable-zlib"
                 "--enable-sqlite" "--enable-mysql" "--enable-lmdb"
                 "--enable-leveldb")))
     (package
+      (inherit gerbil)
       (name name)
       (version v)
       (source
@@ -47,42 +88,13 @@
        `(#:phases
          (modify-phases %standard-phases
            (delete 'check)
-                  ;(add-before 'build 'make-writable
-           (replace 'build
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (let ((out (assoc-ref outputs "out")))
-                        (invoke "chmod" "-R" "777" ".")
-                        ;; (invoke "make configure")
-                        ;; (invoke "make stage0")
-                        ;; (invoke "make stage1")
-                        (setenv "PATH" (string-append (getcwd) "/bin:"
-                                                    (getenv "PATH")))
-                        ;;    build.nix:
-                        ;;  export GERBIL_GXC=$PWD/bin/gxc
-                        (setenv "GERBIL_GXC" (string-append
-                                              (getcwd) "/bin/gxc"))
-
-                        ;; build.nix:    export GERBIL_BASE=$PWD
-                        (setenv "GERBIL_BASE" (getcwd))
-                        ;; build.nix:    export GERBIL_HOME=$PWD
-                        (setenv "GERBIL_HOME" (getcwd))
-                        ;; build.nix:    export GERBIL_PATH=$PWD/lib
-                        (setenv "GERBIL_PATH" (getcwd))
-
-
-                        (invoke "make"))))
-           (add-before 'patch-generated-file-shebangs 'fake-gx
-               (lambda _
-                 (setenv "PATH" (string-append (getcwd) "/bin:"
-                                               (getenv "PATH")))
-                 (invoke "touch" "bin/gxi")
-                 (invoke "chmod" "755" "bin/gxi"    )
-                 (invoke "touch" "bin/gxc")
-                 (invoke "chmod" "755" "bin/gxc"))))
-         #:configure-flags '(,@configure-flags)))
-
-      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)
-                ))
+           (replace 'configure
+             ,(make-gerbil-unstable-configure-form configure-flags))
+          (add-before 'build 'set-build-environment
+            ,gerbil-unstable-before-build-form)
+          (add-before 'patch-generated-file-shebangs 'fake-bin
+            ,gerbil-unstable-fake-/bin))))
+      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)))
       (native-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
                        ("openssl" ,openssl)
                        ("lmdb" ,lmdb)
@@ -91,12 +103,6 @@
                        ("mysql" ,mysql)
                        ("libyaml" ,libyaml)
                        ("libxml2" ,libxml2)
-                       ("zlib" ,zlib)))
-      (home-page "https://cons.io")
-      (license (list l:lgpl2.1+ l:asl2.0))
-      (synopsis "A meta-dialect of Scheme with post-modern features")
-      (description "Gerbil Scheme
+                       ("zlib" ,zlib))))))
 
-Gerbil is an opinionated dialect of Scheme designed for Systems Programming, with a state of the art macro and module system on top of the Gambit runtime.
-
-The macro system is based on quote-syntax, and provides the full meta-syntactic tower with a native implementation of syntax-case. It also provides a full-blown module system, similar to PLT Scheme's (sorry, Racket) modules. The main difference from Racket is that Gerbil modules are single instantiation, supporting high performance ahead of time compilation and compiled macros."))))
+(define-public gerbil-unstable (make-gerbil-package unstable-version)   )

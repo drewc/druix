@@ -20,6 +20,7 @@
    ensure-druix-versions
 
    update-druix-version update-druix-versions
+   find-druix-versions
 
    string<-druix-versions
    new-versions-file-values<-druix-package-name))
@@ -175,7 +176,7 @@
   (make klass
     #:major (assoc-ref valist 'major)
     #:minor (assoc-ref valist 'minor)
-    #:major (assoc-ref valist 'major)
+    #:patch (assoc-ref valist 'patch)
     #:revision (assoc-ref valist 'revision)
     #:repo vrepo
     #:commit gcommit
@@ -188,6 +189,12 @@
 (define (druix-versions-folder)
   (string-append (dirname (%search-load-path "druix/versions"))
                  "/versions"))
+
+(define (find-druix-versions pkg-name)
+  (define dvp (get-druix-versions-path pkg-name))
+  (if (not dvp) #f
+      (eval `(@ (druix versions ,pkg-name) versions)
+            (interaction-environment))))
 
 (define (ensure-druix-versions name klass . args)
   (define obj (apply make klass args))

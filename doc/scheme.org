@@ -2,6 +2,10 @@
 
 We _love_ the scheme language on the *bleedin' edge*.
 
+* Gambit: ~gsi~, a Scheme interpreter, and ~gsc~, the Scheme compiler.
+
+
+
 * Add First "gambit-unstable" package
 
 
@@ -153,7 +157,7 @@ in the source directory.
   (package
     (inherit gambit-c)
     (name "gambit-c-unstable")
-    (version "unstable")
+    (version "0-unstable")
     (source
      (origin
        (method git-fetch)
@@ -169,9 +173,9 @@ in the source directory.
                     (lambda* (#:key outputs #:allow-other-keys)
                       (substitute* "configure"
                         (("^PACKAGE_VERSION=.*$")
-                         (string-append "PACKAGE_VERSION=\"v.4.9.3-" "1d5b01330" "\"\n"))
+                         (string-append "PACKAGE_VERSION=\"v4.9.3-" "1d5b01330" "\"\n"))
                         (("^PACKAGE_STRING=.*$")
-                         (string-append "PACKAGE_STRING=\"Gambit v.4.9.3-" "1d5b01330" "\"\n")))
+                         (string-append "PACKAGE_STRING=\"Gambit v4.9.3-" "1d5b01330" "\"\n")))
                       ))
                   ;(delete 'patch-source-shebangs)
                   (replace 'build
@@ -211,5 +215,20 @@ in the source directory.
                     ("rsync" ,rsync)
                     ("boot", gambit-c-unstable-bootsource)
                     ("openssl" ,openssl)))))
+
+#+end_src
+
+* Jedi mind tricks
+
+#+begin_src shell
+uname -a
+# => Linux guyix 5.11.21 #1 SMP 1 x86_64 GNU/Linux
+guix install libx11 glew
+cd ~/me/guix/src/; git clone git://github.com/jazzscheme/jedi.git && cd jedi
+git clone https://github.com/jazzscheme/jazz && cd jazz && git checkout bongo &&
+cd ..
+export GAMBITDIR=$(cd $(dirname `which gsc`)/../ && pwd)
+
+./jaz make @develop
 
 #+end_src

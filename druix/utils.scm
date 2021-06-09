@@ -16,9 +16,9 @@
   str))
 
 (define ($cmd prog . args)
-  (let ((p (apply open-pipe* OPEN_READ prog args))
+  (let* ((p (apply open-pipe* OPEN_READ prog args))
         (str (string-trim-right (get-string-all p) #\newline)))
-    (close-pipe port)
+    (close-pipe p)
     str))
 
 (define (sha256<-directory dir)
