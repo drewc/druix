@@ -1,24 +1,19 @@
-(define-module (druix packages scheme gambit-c)
-  #:use-module (gnu packages)
-  #:use-module (guix packages)
-  #:use-module (gnu packages tls)
-  #:use-module (gnu packages bash)
-  #:use-module (guix git-download)
-  #:use-module ((druix versions) #:prefix v:)
-  #:use-module ((druix versions gambit-c) #:prefix dv:)
-  #:use-module (gnu packages scheme)
-  #:use-module (guix build utils))
+#+TITLE: Gambit, a full implementation of the Scheme language
 
+In the upstream, as of now ([2021-06-05 Sat]), there is a [[https://guix.gnu.org/en/packages/gambit-c-4.9.3/][gambit-c 4.9.3]]
+package. We'll inherit from that to create a ~gambit-c-unstable 4.9.3~ package.
 
-#;(use-modules (guix packages)
-             (guix download)
-             (guix build utils)
-             (gnu packages scheme)
-             (gnu packages tls)
-             (gnu packages rsync)
-             (gnu packages version-control)
-             (gnu packages compression))
+* Bootstrap: a ~native-input~ to build itself with itself.
+:PROPERTIES:
+:CUSTOM_ID: gambitCBootstrap
+:END:
 
+Like almost every compiler ~gsc~ requires itself to compile itself. For whatever reason, though it automagically works by itself when there is a ~.git~ directory, ~git-fetch~ and friends get rid of the ~.git~ folder before build.
+
+So, we pull it up with a ~gambit-c-bootstrap 4.9.3~ package that essenially does
+what the ~make bootstrap~ does if the ~.git~ still exists.
+
+#+begin_src scheme :noweb-ref gambit-c-bootstrap
 (define-public gambit-c-bootstrap
   (package
     (inherit gambit-c)
@@ -44,6 +39,28 @@
              (let* ((out (assoc-ref outputs "out")))
                (copy-recursively "." out))
              #t)))))))
+#+end_src
+
+* HEAD, bleedin' edge, ~gambit-unstable~
+
+We've got a way to get the version, commit, and sha256 from the repo using
+[[file:~/me/guix/src/druix/doc/versions.org][(druix versions)]].
+
+#+begin_src scheme
+(use-modules ((druix versions) #:prefix v:))
+(v:ensure-druix-versions
+ 'gambit-c v:<druix-version-git>
+ #:repo "https://github.com/gambit/gambit.git")
+
+;; => "/home/drewc/me/guix/src/druix/druix/versions/gambit-c.scm"
+#+end_src
+
+** ~./configure~, the first of three
+
+There are a bunch of flags we want to pass to configure. A few come from the
+version object.
+
+#+begin_src scheme :noweb-ref gambit-c-configure-flags
 (define (gambit-c-configure-flags v)
  (let* ((ver (v:druix-version v))
         (vver (string-append "v" ver))
@@ -56,7 +73,39 @@
             "--enable-gcc-opts"
             "--enable-shared"
             "--enable-absolute-shared-libs" "--enable-openssl"))))
+#+end_src
 
+For a preview of what that does:
+
+#+begin_src scheme
+ > (gambit-c-configure-flags (car (@ (druix versions gambit-c) versions)))
+=> ("PACKAGE_VERSION=v4.9.3-1427-g46618e76" "PACKAGE_STRING=Gambit v4.9.3-1427-g46618e76" "--enable-single-host" "--enable-targets=js,python,ruby,php,java,go" "--enable-c-opt=-O1" "--enable-gcc-opts" "--enable-shared" "--enable-abolute-shared-libs" "--enable-openssl")
+#+end_src
+
+** Bootstrap to new version
+
+Gambit builds itself using itself. Essentially it goes like this.
+
+  1) Start with the release version, copy the source, ~make bootstrap~.
+     Make that into a package that is exported [[#gambitCBootstrap][here]].
+  2) Take the released source and compiler and re-make, using the old source, a
+     "newer" ~gsc~ and call it ~gsc-boot~
+  3) With a newly built ~gsc-boot~ for bootstrapping, build the entire Gambit
+     environment.
+
+     #+begin_src shell
+guix package -L ~/me/guix/src/druix/ --list-available='^gambit-c'
+     #+end_src
+
+     #+RESULTS:
+     | gambit-c                    | 4.9.3                | out | gnu/packages/scheme.scm:409:2                                          |
+     | gambit-c-bootstrap          | 4.9.3-bootsource     | out | /home/drewc/me/guix/src/druix/druix/packages/scheme/gambit-c.scm:131:2 |
+     | gambit-c-bootstrap          | 4.9.3                | out | /home/drewc/me/guix/src/druix/druix/packages/scheme/gambit-c.scm:21:2  |
+     | gambit-c-unstable           | 4.9.3-1427-g46618e76 | out | /home/drewc/me/guix/src/druix/druix/packages/scheme/gambit-c.scm:153:2 |
+     | gambit-c-unstable           | 1-unstable           | out | /home/drewc/me/guix/src/druix/druix/packages/scheme/gambit-c.scm:212:2 |
+     | gambit-c-unstable-bootstrap | 4.9.3-1427-g46618e76 | out | /home/drewc/me/guix/src/druix/druix/packages/scheme/gambit-c.scm:59:2  |
+
+#+begin_src scheme :noweb-ref make-gambit-c-bootstrap
 (define (make-gambit-c-bootstrap v)
   (package
     (inherit gambit-c-bootstrap)
@@ -128,27 +177,25 @@
     (native-inputs `(("boot", gambit-c-bootstrap)
                      ("openssl" ,openssl)
                      ("bash" , bash)))))
+#+end_src
 
-(define gambit-c-unstable-bootsource
-  (package
-    (inherit gambit-c)
-    (name "gambit-c-bootstrap")
-    (version "4.9.3-bootsource")
-    (arguments
-     '(; #:out-of-source? #t
-       #:phases (modify-phases %standard-phases
-                  (add-before 'build 'copy-source
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (let* ((out (assoc-ref outputs "out")))
-                        (copy-recursively "." (string-append out "/boot")))
-                      #true))
-                  ;(delete 'patc    h-source-shebangs)
-                  ;(delete 'check)
-                  (replace 'build
-                    (lambda* (#:key #:allow-other-keys)
-                      (invoke "make" "bootstrap")
-                      #true)))))))
+* ~include/stamp.h~
 
+Gambit knows its version to output via a ~stamp.h~ file when building.
+
+It may not exist, at which point other ways are used.
+
+Those other ways do not work for our unstable packaging, and we do not have the
+~.git~ repo as it's a functional and repoducable build.
+
+So we make our own and tell ~make~ we've made our own.
+
+** We've made our own!
+
+#+begin_src scheme :noweb-ref ownstamp.h
+#+end_src
+
+#+begin_src scheme :noweb-ref stamp.h
 (define (stamp.h v)
   (with-output-to-string
     (lambda ()
@@ -172,6 +219,32 @@
       (display "
 #endif
 "))))
+#+end_src
+
+* ~gambit-c-unstable~
+#+begin_src scheme :noweb-ref make-gambit-c-package :noweb yes
+
+(define gambit-c-unstable-bootsource
+  (package
+    (inherit gambit-c)
+    (name "gambit-c-bootstrap")
+    (version "4.9.3-bootsource")
+    (arguments
+     '(; #:out-of-source? #t
+       #:phases (modify-phases %standard-phases
+                  (add-before 'build 'copy-source
+                    (lambda* (#:key outputs #:allow-other-keys)
+                      (let* ((out (assoc-ref outputs "out")))
+                        (copy-recursively "." (string-append out "/boot")))
+                      #true))
+                  ;(delete 'patc    h-source-shebangs)
+                  ;(delete 'check)
+                  (replace 'build
+                    (lambda* (#:key #:allow-other-keys)
+                      (invoke "make" "bootstrap")
+                      #true)))))))
+
+<<stamp.h>>
 
 (define* (make-gambit-c-package
           v #:optional (bootstrap (make-gambit-c-bootstrap v)))
@@ -281,6 +354,35 @@
                     ("rsync" ,rsync)
                     ("boot", gambit-c-unstable-bootsource)
                     ("openssl" ,openssl))))))
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gambit-c.scm :noweb yes :mkdirp t
+(define-module (druix packages scheme gambit-c)
+  #:use-module (gnu packages)
+  #:use-module (guix packages)
+  #:use-module (gnu packages tls)
+  #:use-module (gnu packages bash)
+  #:use-module (guix git-download)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module ((druix versions gambit-c) #:prefix dv:)
+  #:use-module (gnu packages scheme)
+  #:use-module (guix build utils))
+
+
+#;(use-modules (guix packages)
+             (guix download)
+             (guix build utils)
+             (gnu packages scheme)
+             (gnu packages tls)
+             (gnu packages rsync)
+             (gnu packages version-control)
+             (gnu packages compression))
+
+<<gambit-c-bootstrap>>
+<<gambit-c-configure-flags>>
+
+<<make-gambit-c-bootstrap>>
+<<make-gambit-c-package>>
 
 (define gambit-c-versions dv:versions)
 (define gambit-c-unstable-version (car gambit-c-versions))
@@ -301,3 +403,4 @@
   (eval `(export ,sym) (interaction-environment)))
 
 (for-each modsym gambit-c-packages)
+#+end_src

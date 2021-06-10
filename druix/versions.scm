@@ -6,7 +6,7 @@
   #:use-module (guix build utils)
   #:export
   (<druix-version>
-   major minor patch revision sha256
+   major minor patch revision ymd hms sha256
 
    <druix-version-git>
    repo commit
@@ -32,6 +32,8 @@
   (minor #:accessor minor #:init-value 0  #:init-keyword #:minor)
   (patch #:accessor patch #:init-value #f #:init-keyword #:patch)
   (revision #:accessor revision #:init-value #f #:init-keyword #:revision)
+  (ymd #:accessor ymd #:init-value 19700101 #:init-keyword #:ymd)
+  (hms #:accessor hms #:init-value 000000 #:init-keyword #:hms)
   (sha256 #:accessor sha256 #:init-value #f #:init-keyword #:sha256))
 (define-generic druix-version)
 
@@ -173,11 +175,20 @@
   (define vrepo
     (with-directory-excursion grepo
       ($cmd "git" "remote" "get-url" "origin")))
+  (define gymd
+    (with-directory-excursion grepo
+      ($cmd "sh" "-c" "TZ=UTC git show --quiet --date='format-local:%Y%m%d' --format=%cd")))
+  (define ghms
+    (with-directory-excursion grepo
+      ($cmd "sh" "-c" "TZ=UTC git show --quiet --date='format-local:%H%M%S' --format=%cd")))
+
   (make klass
     #:major (assoc-ref valist 'major)
     #:minor (assoc-ref valist 'minor)
     #:patch (assoc-ref valist 'patch)
     #:revision (assoc-ref valist 'revision)
+    #:ymd (string->number gymd)
+    #:hms (string->number ghms)
     #:repo vrepo
     #:commit gcommit
     #:sha256 gsha256))
@@ -220,10 +231,11 @@
                 name (obj <druix-version-git>))
   (define vpath (get-druix-versions-path name))
   (define vfldr (druix-versions-folder))
-  (if (not vpath)
-      (let* ((repo (ensure-git-repo (repo obj)))
-             (versions (list (druix-version<-git-repo (class-of obj) repo))))
-        (write-druix-versions-file name versions))
-      (let ((versions (update-druix-versions name)))
-        (if (not versions) vpath
-            (write-druix-versions-file name versions)))))
+  (let* ((repo (ensure-git-repo (repo obj)))
+         (oldvs (find-druix-versions name))
+         (newv (druix-version<-git-repo (class-of obj) repo))
+         (restvs (if (null? oldvs) oldvs
+                     (if (equal? (commit (car oldvs)) (commit newv))
+                         (cdr oldvs)
+                         oldvs))))
+    (write-druix-versions-file name (cons newv restvs))))
