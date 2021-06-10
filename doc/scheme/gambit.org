@@ -231,14 +231,6 @@ So we make our own and tell ~make~ we've made our own.
      `(#:phases
        (modify-phases %standard-phases
          <<make-stamp.h>>
-         #;(add-before 'configure 'sub-new-version
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "configure"
-               (("^PACKAGE_VERSION=.*$")
-                ,(string-append "PACKAGE_VERSION=\"v" (v:druix-version v)"\"\n"))
-               (("^PACKAGE_STRING=.*$")
-                ,(string-append "PACKAGE_STRING=\"Gambit v" (v:druix-version v)"\"\n")))
-             (invoke "grep" "-i" "^PACKAGE.*" "configure")))
          (replace 'build
                     (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
                       (let ((bootroot (assoc-ref (or native-inputs inputs) "gambit-c-bootstrap")))
