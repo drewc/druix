@@ -6,8 +6,7 @@
   #:use-module (guix git-download)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module ((druix versions gambit-c) #:prefix dv:)
-  #:use-module (gnu packages scheme)
-  #:use-module (guix build utils))
+  #:use-module (gnu packages scheme))
 
 
 #;(use-modules (guix packages)
@@ -75,14 +74,6 @@
        (modify-phases %standard-phases
          (delete 'check)
          (delete 'install)
-          #;(add-before 'configure 'sub-new-version
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "configure"
-               (("^PACKAGE_VERSION=.*$")
-                ,(string-append "PACKAGE_VERSION=\"v" (v:druix-version v)"\"\n"))
-               (("^PACKAGE_STRING=.*$")
-                ,(string-append "PACKAGE_STRING=\"Gambit v" (v:druix-version v)"\"\n")))
-             (invoke "grep" "-i" "^PACKAGE.*" "configure")))
          (replace 'build
            (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
              (let ((bootroot (assoc-ref inputs "boot"))
@@ -103,13 +94,6 @@
                ;; make sure we rebuild gsc
                (delete-file-recursively "./boot/gsc/gsc")
                (invoke "echo" "Reconf for boot/configure\n\n\n\n")
-               #;(substitute* "./boot/configure"
-               (("^PACKAGE_VERSION=.*$")
-                ,(string-append "PACKAGE_VERSION=\"v" (v:druix-version v)"\"\n"))
-               (("^PACKAGE_STRING=.*$")
-                ,(string-append "PACKAGE_STRING=\"Gambit v" (v:druix-version v)"\"\n")))
-               #;(invoke "grep" "-i" "^PACKAGE.*" "./boot/configure")
-
                ;; Copy over the new `gsc` files to build with.
                (for-each (lambda (scm)
                            (copy-recursively
@@ -121,34 +105,12 @@
                                                 "; cd boot && ./configure && \
       for i in lib gsi gsc ; do (cd $i ; echo 'making' $i ; find . ; make ) ; done \n"))
                (copy-recursively "./boot" out)
-               #;(copy-recursively "./boot/gsc/gsc" (string-append out "/bin/gsc"))
 
                #t))))
        #:configure-flags '(,@(gambit-c-configure-flags v))))
     (native-inputs `(("boot", gambit-c-bootstrap)
                      ("openssl" ,openssl)
                      ("bash" , bash)))))
-
-(define gambit-c-unstable-bootsource
-  (package
-    (inherit gambit-c)
-    (name "gambit-c-bootstrap")
-    (version "4.9.3-bootsource")
-    (arguments
-     '(; #:out-of-source? #t
-       #:phases (modify-phases %standard-phases
-                  (add-before 'build 'copy-source
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (let* ((out (assoc-ref outputs "out")))
-                        (copy-recursively "." (string-append out "/boot")))
-                      #true))
-                  ;(delete 'patc    h-source-shebangs)
-                  ;(delete 'check)
-                  (replace 'build
-                    (lambda* (#:key #:allow-other-keys)
-                      (invoke "make" "bootstrap")
-                      #true)))))))
-
 (define (stamp.h v)
   (with-output-to-string
     (lambda ()
@@ -191,26 +153,18 @@
      `(#:phases
        (modify-phases %standard-phases
          (add-before 'configure 'make-stamp.h
-           (lambda _
-             (substitute* "include/makefile.in"
-               (("echo > stamp.h;")
-                 "echo \"Actually, non, we make one for guix!\"; cat stamp.h;"))
-
-               (invoke "chmod" "-R" "u+rw" "./include")
-             (with-output-to-file "include/stamp.h"
-               (lambda () (display ,(stamp.h v))))
-             (invoke "echo" "Made an include/stamp.h")
-             (invoke "cat" "include/stamp.h")))
-         #;(add-before 'configure 'sub-new-version
-           (lambda* (#:key outputs #:allow-other-keys)
-             (substitute* "configure"
-               (("^PACKAGE_VERSION=.*$")
-                ,(string-append "PACKAGE_VERSION=\"v" (v:druix-version v)"\"\n"))
-               (("^PACKAGE_STRING=.*$")
-                ,(string-append "PACKAGE_STRING=\"Gambit v" (v:druix-version v)"\"\n")))
-             (invoke "grep" "-i" "^PACKAGE.*" "configure")))
+                    (lambda _
+                      (substitute* "include/makefile.in"
+                        (("echo > stamp.h;")
+                          "echo \"Actually, non, we make one for guix!\"; cat stamp.h;"))
+         
+                        (invoke "chmod" "-R" "u+rw" "./include")
+                      (with-output-to-file "include/stamp.h"
+                        (lambda () (display ,(stamp.h v))))
+                      (invoke "echo" "Made an include/stamp.h")
+                      (invoke "cat" "include/stamp.h")))
          (replace 'build
-                    (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
+           (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
                       (let ((bootroot (assoc-ref (or native-inputs inputs) "gambit-c-bootstrap")))
                       (invoke "chmod" "-R" "u+rw" "./")
                       (copy-recursively bootroot "boot/")
@@ -222,65 +176,7 @@
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
    (native-inputs `(("gambit-c-bootstrap", bootstrap)
-                    ("openssl" ,openssl)
-                    ("bash" , bash)))))
-
-(define gambit-c-main-sha1
-  "1d5b01330881b3e26345dbaabfd35bbdfae36330")
-(define gambit-c-main-hash "17f1zyvs0qazqbqczbsspqrz2vzsabg8kbz2xf1z5x6xxxvkqimc")
-
-#;(define-public gambit-c-unstable-working
-  (let ((v (car dv:versions)))
-  (package
-    (inherit gambit-c)
-    (name "gambit-c-unstable")
-    (version "1-unstable")
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url (v:repo v))
-             (commit (v:commit v))))
-       (file-name (git-file-name name (v:commit v)))
-       (sha256 (base32 (v:sha256 v)))))
-    (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (add-before 'configure 'sub-new-version
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (substitute* "configure"
-                        (("^PACKAGE_VERSION=.*$")
-                         ,(string-append "PACKAGE_VERSION=\"v" (v:druix-version v)"\"\n"))
-                        (("^PACKAGE_STRING=.*$")
-                         ,(string-append "PACKAGE_STRING=\"Gambit v" (v:druix-version v)"\"\n")))
-                      (invoke "grep" "-i" "^PACKAGE.*" "configure")))
-                  ;(delete 'patch-source-shebangs)
-                  (replace 'build
-                    (lambda* (#:key outputs #:allow-other-keys)
-                      (let ((bs (dirname
-                                  (string-append (dirname (which "gsi"))
-                                                 "../")))
-                            (gsc-boot (which "gsc")))
-                        (invoke "cat" "makefile")
-                      (invoke "rsync" "-rt"
-                              (string-append bs "/boot/") "boot/")
-                      (invoke "chmod" "-R" "u+rw" "./")
-                      (invoke "cp" gsc-boot "boot/gsc-boot")
-                      (invoke "sh" "-c" "export CONFIG_SHELL=`which bash` ;
- cp config.guess boot; cp config.sub boot; cd boot && \
- rm -f gsc/makefile && \
- cp ../gsc/makefile.in ../gsc/*.scm gsc && ./configure && \
- for i in lib gsi gsc ; do (cd $i ; echo 'making' $i ; find . ; make ) ; done;
-  ")
-                      (invoke "cp" "boot/gsc/gsc" "gsc-boot")
-                      (invoke "make" "bootclean")
-                      (invoke "sh" "-c" "make stamp ; make from-scratch && make modules")
-                                        ;; (invoke "make" "all")
-                      #true))))
-        #:configure-flags '(,@(gambit-c-configure-flags v))))
-   (native-inputs `(("unzip" ,unzip)
-                    ("rsync" ,rsync)
-                    ("boot", gambit-c-unstable-bootsource)
-                    ("openssl" ,openssl))))))
+                    ("openssl" ,openssl)))))
 
 (define gambit-c-versions dv:versions)
 (define gambit-c-unstable-version (car gambit-c-versions))
@@ -290,7 +186,7 @@
 
 (define-public gambit-c-packages (map make-gambit-c-package gambit-c-versions))
 
-(define gambit-c-unstable (car gambit-c-packages))
+(define-public gambit-c-unstable (car gambit-c-packages))
 
 (define (exsym pkg)
   (string->symbol (string-append "gambit-unstable-" (package-version pkg))))

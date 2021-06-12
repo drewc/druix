@@ -1,0 +1,8 @@
+#+TITLE: Guix Channel
+
+#+begin_src scheme
+(channel
+ (name 'druix)
+ (url "https://github.com/drewc/druix.git")
+ (branch "main"))
+#+end_src

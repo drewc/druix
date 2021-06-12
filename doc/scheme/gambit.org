@@ -232,7 +232,7 @@ So we make our own and tell ~make~ we've made our own.
        (modify-phases %standard-phases
          <<make-stamp.h>>
          (replace 'build
-                    (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
+           (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
                       (let ((bootroot (assoc-ref (or native-inputs inputs) "gambit-c-bootstrap")))
                       (invoke "chmod" "-R" "u+rw" "./")
                       (copy-recursively bootroot "boot/")
@@ -244,7 +244,7 @@ So we make our own and tell ~make~ we've made our own.
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
    (native-inputs `(("gambit-c-bootstrap", bootstrap)
-                    ("openssl" ,openssl)
+                    ("openssl" ,openssl)))))
 #+end_src
 
 #+begin_src scheme :tangle ../../druix/packages/scheme/gambit-c.scm :noweb yes :mkdirp t
@@ -256,8 +256,7 @@ So we make our own and tell ~make~ we've made our own.
   #:use-module (guix git-download)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module ((druix versions gambit-c) #:prefix dv:)
-  #:use-module (gnu packages scheme)
-  #:use-module (guix build utils))
+  #:use-module (gnu packages scheme))
 
 
 #;(use-modules (guix packages)
@@ -283,7 +282,7 @@ So we make our own and tell ~make~ we've made our own.
 
 (define-public gambit-c-packages (map make-gambit-c-package gambit-c-versions))
 
-(define gambit-c-unstable (car gambit-c-packages))
+(define-public gambit-c-unstable (car gambit-c-packages))
 
 (define (exsym pkg)
   (string->symbol (string-append "gambit-unstable-" (package-version pkg))))

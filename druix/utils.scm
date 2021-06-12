@@ -3,11 +3,13 @@
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
   #:use-module (guix build utils)
+  #:use-module (guix packages)
   #:export
   (cmd-line $cmd sha256<-directory
    git-clone-repo ensure-git-repo
    git-repo-current-commit
-   git-repo-describe--tags))
+   git-repo-describe--tags
+   export-package))
 
 (define (cmd-line command-line)
      (let* ((port (open-input-pipe command-line))
@@ -48,6 +50,15 @@
     (cmd-line (apply string-append "git describe --tags"
            (if abbrev (list " --abbrev=" (number->string abbrev)) '()))))
   (with-directory-excursion repo (cmd)))
+
+(define (export-package pkg)
+  (define sym
+    (string->symbol
+     (string-append (package-name pkg) "-" (package-version pkg))))
+  (module-define! (current-module) sym pkg)       
+  (eval `(export ,sym) (interaction-environment)))
+
+
 
 (define (git-repo-get-commit-and-sha256 repo)
   ;;;   => ("commit" . "sha256")

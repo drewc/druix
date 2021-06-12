@@ -1,7 +1,8 @@
-(define-module (druix packages scheme gerbil-unstable)
-  #:use-module (druix packages scheme gambit-c-unstable)
+(define-module (druix packages scheme gerbil)
+  #:use-module (druix packages scheme gambit-c)
+  #:use-module (druix utils)
   #:use-module (gnu packages scheme)
-  #:use-module ((druix versions gerbil-unstable) #:prefix dvg:)
+  #:use-module ((druix versions gerbil) #:prefix dvg:)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
   #:use-module (guix build-system gnu)
@@ -18,7 +19,7 @@
   #:use-module (gnu packages databases)
   #:use-module (guix store))
 
-(define unstable-version (car dvg:versions))
+#;(define unstable-version (car dvg:versions))
 
 (define (make-gerbil-unstable-configure-form flags)
   `(lambda* (#:key build target native-inputs inputs outputs
@@ -51,8 +52,6 @@
 
 (define gerbil-unstable-fake-/bin
   '(lambda _
-     (invoke "echo" "here bin?")
-     (invoke "find" ".")
      (setenv "PATH"
              (string-append (getcwd) "/bin:" (getenv "PATH")))
      (for-each (lambda (exe)
@@ -60,12 +59,11 @@
                '("bin/gxi" "bin/gxi-script" "bin/gxc"))
   #t))
 
-(define (make-gerbil-package version)
+(define* (make-gerbil-package version #:optional (name "gerbil-unstable"))
    (let* ((v (v:druix-version version))
          (c (v:commit version))
          (s (v:sha256 version))
          (git-uri (v:repo version))
-         (name "gerbil-unstable")
          (pv (string-append "PACKAGE_VERSION=v" v ""))
          (configure-flags
           `(,pv "--enable-libxml" "--enable-libyaml" "--enable-zlib"
@@ -105,4 +103,9 @@
                        ("libxml2" ,libxml2)
                        ("zlib" ,zlib))))))
 
-(define-public gerbil-unstable (make-gerbil-package unstable-version)   )
+
+(define-public gerbil-packages
+  (map make-gerbil-package (@ (druix versions gerbil) versions)))
+(for-each export-package gerbil-packages)
+
+(define-public gerbil-unstable (car gerbil-packages))

@@ -4,6 +4,7 @@
   #:use-module (ice-9 textual-ports)
   #:use-module (ice-9 regex)
   #:use-module (guix build utils)
+  #:use-module (ice-9 pretty-print)
   #:export
   (<druix-version>
    major minor patch revision ymd hms sha256
@@ -77,34 +78,6 @@
      #:use-module (oop goops)
      #:export (versions)))
 
-
-;; => Either a new version or #f if it does not need updating
-(define-generic update-druix-version)
-
-(define-method (update-druix-version (v <druix-version>))
-  ;; For now just say it does not need updating
-  #f)
-
-(define-method (update-druix-version (v <druix-version-git>))
-  (let* ((src (git-clone-repo (repo v) "--depth=1"))
-         (src-commit (git-repo-current-commit src)))
-    (if (string=? src-commit (commit v)) #f
-        (make (class-of v)
-          #:major (major v) #:minor (minor v) #:patch (patch v)
-          #:revision (1+ (revision v))
-          #:repo (repo v)
-          #:commit src-commit
-          #:sha256 (sha256<-directory src)))))
-
-(define (update-druix-versions pkg-name)
-  (define versions (eval `(@ (druix versions ,pkg-name) versions)
-                         (interaction-environment)))
-  (define main-version (car versions))
-  (define update? (update-druix-version main-version))
-
-  (if (not update?) #f
-      (cons update? versions)))
-
 (define (string<-druix-versions vs)
   (with-output-to-string
     (lambda ()
@@ -113,27 +86,10 @@
       (map (lambda (form)
              (if (not one) (newline) (set! one #f))
              (display "    ")
-             (write form))
+             (pretty-print form))
            (map make-form<-druix-version vs))
       (display "))")
       (newline)))))
-
-(define (new-versions-file-values<-druix-package-name pkg-name)
-  ;; (values new-versions? pathname contents-as-string)
-  (define path (%search-load-path
-                (string-append "druix/versions/" (symbol->string pkg-name))))
-  (define new-versions? (update-druix-versions pkg-name))
-  (define cnts
-    (if new-versions?
-        (with-output-to-string
-          (lambda ()
-            (write (make-define-module-form-for-versions pkg-name))
-            (newline)
-            (display (string<-druix-versions new-versions?))))
-        (call-with-input-file path get-string-all)))
-  (values (if (not (eq? new-versions? #f)) #t #f)
-          path
-          cnts))
 
 (define (alist<-parse-druix-version str)
   (define version '())
@@ -232,7 +188,7 @@
   (define vpath (get-druix-versions-path name))
   (define vfldr (druix-versions-folder))
   (let* ((repo (ensure-git-repo (repo obj)))
-         (oldvs (find-druix-versions name))
+         (oldvs (if vpath (find-druix-versions name) '()))
          (newv (druix-version<-git-repo (class-of obj) repo))
          (restvs (if (null? oldvs) oldvs
                      (if (equal? (commit (car oldvs)) (commit newv))

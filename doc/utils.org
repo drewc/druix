@@ -21,6 +21,21 @@ Here's what we need so far.
   (with-directory-excursion dir
     (cmd-line "guix hash -xr .")))
 #+end_src
+
+* Export a package
+
+Because we autogen most packages, and packages should/need to be exported to be visible, there is a simple way to do so.
+
+#+begin_src scheme :noweb-ref export-package
+(define (export-package pkg)
+  (define sym
+    (string->symbol
+     (string-append (package-name pkg) "-" (package-version pkg))))
+  (module-define! (current-module) sym pkg)       
+  (eval `(export ,sym) (interaction-environment)))
+
+
+#+end_src
 * Git
 
 First thing is we want to generate a ~sha256~ for a certain commit.
@@ -76,11 +91,13 @@ Often the version is within the tags. We get them here.
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 textual-ports)
   #:use-module (guix build utils)
+  #:use-module (guix packages)
   #:export
   (cmd-line $cmd sha256<-directory
    git-clone-repo ensure-git-repo
    git-repo-current-commit
-   git-repo-describe--tags))
+   git-repo-describe--tags
+   export-package))
 
 <<cmd-line>>
 
@@ -91,6 +108,8 @@ Often the version is within the tags. We get them here.
 <<git-repo-current-commit>>
 
 <<git-describe-tags>>
+
+<<export-package>>
 
 (define (git-repo-get-commit-and-sha256 repo)
   ;;;   => ("commit" . "sha256")
