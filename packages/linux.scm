@@ -57,32 +57,32 @@
 System on hardware which requires nonfree software to function.")))
 
 (define-public linux-5.12
-  (corrupt-linux linux-libre-5.12 "5.12.6"
-                 "1cdxda5mgdi5dky6hvrq2727rrlw9lnzf30kf3lbiikjybvlqw2b"))
+  (corrupt-linux linux-libre-5.12 "5.12.9"
+                 "0vg71h8r90fl01a8khyf1776y76rgqisxafky89cswa2fpsvxyn7"))
 
 (define-public linux-5.10
-  (corrupt-linux linux-libre-5.10 "5.10.39"
-                 "057nnfkbm69ji80rx9lqgmvqsv74x9lcaq3kfs0k91cpr8asaf2p"))
+  (corrupt-linux linux-libre-5.10 "5.10.42"
+                 "1r86v6q7ml7zv001f25w3h667nqqy39439s94vnqsyyn7g3jg84b"))
 
 (define-public linux-5.4
-  (corrupt-linux linux-libre-5.4 "5.4.121"
-                 "0prparsdyi8n3cfq3vbhn5var2xcw5dglscxqny19qcplgy2g4wx"))
+  (corrupt-linux linux-libre-5.4 "5.4.124"
+                 "10kxa1ng9w9xd2d5xh48fbhp1kri650p90nihrcpnb845gd9vwpp"))
 
 (define-public linux-4.19
-  (corrupt-linux linux-libre-4.19 "4.19.191"
-                 "1jd97rzv900mnyzps4xmf6k166zrg391vcrbmr5zvcway5qbn9mm"))
+  (corrupt-linux linux-libre-4.19 "4.19.193"
+                 "17ci49ak5iw01kfkn3fcgncg9hm4j188417bxi3bnsq9il5ymhl4"))
 
 (define-public linux-4.14
-  (corrupt-linux linux-libre-4.14 "4.14.233"
-                 "0sqikz8cvrjfs46mcqx9gbdfkpdims0m5xxxzwr5vcfph5rdvj26"))
+  (corrupt-linux linux-libre-4.14 "4.14.235"
+                 "03k793hj294zf7jncs1h8zh5dh6xagkfvnydd9jadxvq2z8vvl8f"))
 
 (define-public linux-4.9
-  (corrupt-linux linux-libre-4.9 "4.9.269"
-                 "1pnggwc9i6hka21vvl4yd9pd38hpnym9z56m4mhl970ijl4zywbr"))
+  (corrupt-linux linux-libre-4.9 "4.9.271"
+                 "1480miixphkf0b8w00m753ar7yp1rnl3zyr9wp4inngi2f90553r"))
 
 (define-public linux-4.4
-  (corrupt-linux linux-libre-4.4 "4.4.269"
-                 "0qx5zwi2ijwv9jwhs4cz91z7yxy6nd0g8ryzrlg1ar2xyk8w4yh4"))
+  (corrupt-linux linux-libre-4.4 "4.4.271"
+                 "0n5h2lv1p542a45pas3pi0vkhgrk096vwrps79a7v3a6c1q2dxx6"))
 
 (define-public linux linux-5.12)
 ;; linux-lts points to the *newest* released long-term support version.

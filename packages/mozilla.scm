@@ -81,19 +81,19 @@
 
 ;; Update this id with every firefox update to it's release date.
 ;; It's used for cache validation and therefor can lead to strange bugs.
-(define %firefox-build-id "20210505000000")
+(define %firefox-build-id "20210601000000")
 
 (define-public firefox
   (package
     (name "firefox")
-    (version "88.0.1")
+    (version "89.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://archive.mozilla.org/pub/firefox/releases/"
                            version "/source/firefox-" version ".source.tar.xz"))
        (sha256
-        (base32 "1k0451ikq65n5lnf2k52nh4f3cnsbiq9vlym3xk9kzi81sp1xpw3"))))
+        (base32 "02m9w3igb1higxnqp318r41khf936jm6szw4bcd0amb4g7axfhyv"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -216,8 +216,10 @@
              (setenv "MACH_USE_SYSTEM_PYTHON" "1")
 
              ;; Use Clang, Clang is 2x faster than GCC
-             (setenv "AR" "llvm-ar") (setenv "NM" "llvm-nm")
-             (setenv "CC" "clang") (setenv "CXX" "clang++")
+             (setenv "AR" "llvm-ar")
+             (setenv "NM" "llvm-nm")
+             (setenv "CC" "clang")
+             (setenv "CXX" "clang++")
 
              (setenv "MOZ_NOSPAM" "1")
              ;; Firefox will write the timestamp to output, which is harmful for
@@ -375,8 +377,8 @@
     (native-inputs
      `(("autoconf" ,autoconf-2.13)
        ("cargo" ,rust-1.47 "cargo")
-       ("clang" ,clang)
-       ("llvm" ,llvm)
+       ("clang" ,clang-10)
+       ("llvm" ,llvm-10)
        ("m4" ,m4)
        ("nasm" ,nasm)
        ("node" ,node)
@@ -385,7 +387,7 @@
        ("python" ,python)
        ("python2" ,python-2.7)
        ("rust" ,rust-1.47)
-       ("rust-cbindgen" ,rust-cbindgen-0.16)
+       ("rust-cbindgen" ,rust-cbindgen-0.19)
        ("which" ,which)
        ("yasm" ,yasm)))
     (home-page "https://mozilla.org/firefox/")
