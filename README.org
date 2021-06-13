@@ -13,7 +13,16 @@ against recommending nonfree software, and to avoid any unnecessary hostility.
 
 * Usage
 
-Right now it's not (yet) a channel, so clone the repo and ~-L~ it.
+It's a guix channel. Add this to ~~/.config/guix/channels.scm~.
+
+#+begin_src scheme
+(channel
+ (name 'druix)
+ (url "https://github.com/drewc/druix.git")
+ (branch "main"))
+#+end_src
+
+For hacking, clone the repo and ~-L~ it.
 
 ie:
 
@@ -39,8 +48,3 @@ that Guix refuses to include (for good reason!). My priorities and philosophies
 somewhat differ and my freedom is my ability to choose "non-free" hardware :).
 
 Have a look [[file:doc/nonguix.org::*NonGuix/NonGNU in Druix][here]] for details.
-
-* Versioning and git
-
-
-* Scheme: Gambit and Gerbil, "unstable"
