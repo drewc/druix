@@ -1,8 +1,10 @@
 (define-module (druix packages scheme gambit-c)
   #:use-module (gnu packages)
+  #:use-module (gnu packages linux)
   #:use-module (guix packages)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages commencement)
   #:use-module (guix git-download)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module ((druix versions gambit-c) #:prefix dv:)
@@ -175,8 +177,10 @@
                       #true))))
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
-   (native-inputs `(("gambit-c-bootstrap", bootstrap)
-                    ("openssl" ,openssl)))))
+    (inputs `(("gcc-toolchain" ,gcc-toolchain)
+              ("linux-headers" ,linux-libre-headers)))
+    (native-inputs `(("gambit-c-bootstrap", bootstrap)
+                     ("openssl" ,openssl)))))
 
 (define gambit-c-versions dv:versions)
 (define gambit-c-unstable-version (car gambit-c-versions))

@@ -61,16 +61,15 @@ use as your kernel.
 #+begin_src shell :results code
 guix system describe
 #+end_src
-
-#+RESULTS:
+*=>*
 #+begin_src shell
-Generation 7	Jun 12 2021 15:13:21	(current)
-  file name: /var/guix/profiles/system-7-link
-  canonical file name: /gnu/store/7gnni77fx4rk1jvz62zxv2dd081wgxgh-system
-  label: GNU with Linux 5.12.6
+Generation 9	Jun 13 2021 14:05:51	(current)
+  file name: /var/guix/profiles/system-9-link
+  canonical file name: /gnu/store/xb777rqm7q1llz0hvrwhzz09h83y9y0c-system
+  label: GNU with Linux 5.12.9
   bootloader: grub-efi
   root device: UUID: af264d3f-83ce-400d-a8fe-408c72c3def1
-  kernel: /gnu/store/4swkkiqywfjrhm4wylm3ajva52fb1ygc-linux-5.12.6/bzImage
+  kernel: /gnu/store/gcy0rg1z3a7399rm6qk2nl583ll9r6b3-linux-5.12.9/bzImage
   channels:
     nonguix:
       repository URL: https://gitlab.com/nonguix/nonguix
@@ -83,12 +82,12 @@ Generation 7	Jun 12 2021 15:13:21	(current)
     druix:
       repository URL: https://github.com/drewc/druix.git
       branch: main
-      commit: a3b22b3c1353dc42472df403f3fd4734e9c6b7e5
+      commit: 23aeec0c491ccf641c5536d038a98863a474b616
     guix:
       repository URL: https://git.savannah.gnu.org/git/guix.git
       branch: master
-      commit: c0e61f4d1dc5de63458660986120452be3f589c2
-  configuration file: /gnu/store/01zvd2xzq414pwdi49mrzjaxmxd7bspy-configuration.scm
+      commit: bd02e50a02ceed914135dba1e69e4457e489cf86
+  configuration file: /gnu/store/lwbhlnsjk2ghl3bpk1q4j15n421ljhxr-configuration.scm
 #+end_src
 
 #+BEGIN_SRC scheme
@@ -96,20 +95,21 @@ Generation 7	Jun 12 2021 15:13:21	(current)
                (guix channels))
   (operating-system
     (kernel
-      (let*
-        ((channels
-          (list (channel
-                 (name 'nonguix)
-                 (url "https://gitlab.com/nonguix/nonguix")
-                 (commit "c9d7f30bcbd3a6e3076e56a972c33963c73c4d58"))
-                (channel
-                 (name 'guix)
-                 (url "https://git.savannah.gnu.org/git/guix.git")
-                 (commit "c0e61f4d1dc5de63458660986120452be3f589c2"))))
-         (inferior
-          (inferior-for-channels channels)))
-        (first (lookup-inferior-packages inferior "linux"))
+     (let*
+         ((channels
+               (list (channel
+                      (name 'druix)
+                      (url "https://github.com/drewc/druix.git")
+                      (commit "23aeec0c491ccf641c5536d038a98863a474b616"))
+                     (channel
+                      (name 'guix)
+                      (url "https://git.savannah.gnu.org/git/guix.git")
+                      (commit "bd02e50a02ceed914135dba1e69e4457e489cf86"))))
+              (inferior
+               (inferior-for-channels channels))
+         (pkgs (lookup-inferior-packages inferior "linux" "5.12.9")))
+       (first pkgs))
 
-        ))
+      )
     ...)
 #+END_SRC

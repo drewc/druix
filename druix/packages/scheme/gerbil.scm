@@ -1,5 +1,7 @@
 (define-module (druix packages scheme gerbil)
   #:use-module (druix packages scheme gambit-c)
+  #:use-module (gnu packages commencement)
+  #:use-module (gnu packages linux)
   #:use-module (druix utils)
   #:use-module (gnu packages scheme)
   #:use-module ((druix versions gerbil) #:prefix dvg:)
@@ -92,7 +94,9 @@
             ,gerbil-unstable-before-build-form)
           (add-before 'patch-generated-file-shebangs 'fake-bin
             ,gerbil-unstable-fake-/bin))))
-      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)))
+      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)
+                ("gcc-toolchain" ,gcc-toolchain)
+                ("linux-headers" ,linux-libre-headers)))
       (native-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
                        ("openssl" ,openssl)
                        ("lmdb" ,lmdb)
