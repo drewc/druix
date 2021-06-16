@@ -124,9 +124,16 @@
 
 (define (druix-version<-git-repo klass repo-or-uri . uri-args)
   (define grepo (apply ensure-git-repo repo-or-uri uri-args))
+  (define vrev
+    (string->number (with-directory-excursion grepo
+      ($cmd "git" "rev-list" "master" "--count"))))
   (define gcommit (git-repo-current-commit grepo))
+
   (define gdesc (git-repo-describe--tags grepo))
-  (define valist (alist<-parse-druix-version gdesc))
+  (define valist (catch #t (lambda ()
+                             (alist<-parse-druix-version gdesc))
+                       (lambda _ `((revision . ,vrev)))))
+
   (define gsha256 (sha256<-directory grepo))
   (define vrepo
     (with-directory-excursion grepo
@@ -189,7 +196,12 @@
   (define vfldr (druix-versions-folder))
   (let* ((repo (ensure-git-repo (repo obj)))
          (oldvs (if vpath (find-druix-versions name) '()))
-         (newv (druix-version<-git-repo (class-of obj) repo))
+         (newv (let ((nv (druix-version<-git-repo (class-of obj) repo)))
+                 (if (not (major nv))
+                     (set! (major nv) (major obj)))
+                 (if (not (minor nv))
+                     (set! (minor nv) (minor obj)))
+                 nv))
          (restvs (if (null? oldvs) oldvs
                      (if (equal? (commit (car oldvs)) (commit newv))
                          (cdr oldvs)

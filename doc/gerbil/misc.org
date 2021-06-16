@@ -1,0 +1,95 @@
+#+TITLE: Misc: A bunch of Gerbil packages for your perusal
+
+* Gerbil Utils
+
+
+#+begin_src scheme
+(use-modules ((druix versions) #:prefix v:))
+(v:ensure-druix-versions
+ 'gerbil-utils v:<druix-version-git>
+ #:repo "https://github.com/fare/gerbil-utils.git")
+
+;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil-utils.scm"
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-utils.scm
+(define-module (druix packages scheme gerbil gerbil-utils)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix utils)
+  #:use-module (druix build-system gerbil)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module (guix packages)
+  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages base)
+  #:use-module (guix git-download))
+
+(define-public gerbil-utils
+  (let ((v (car (@ (druix versions gerbil-utils) versions))))
+
+  (package
+    (name "gerbil-utils")
+    (synopsis "Gerbil Clan: Community curated Collection of Common Utilities")
+    (license l:lgpl2.1)
+    (description synopsis)
+    (home-page "https://github.com/fare/gerbil-utils")
+    (version (v:druix-version v))
+    (build-system gerbil-build-system)
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url (v:repo v))
+             (commit (v:commit v))))
+       (file-name (git-file-name name (v:commit v)))
+       (sha256 (base32 (v:sha256 v)))))
+    (inputs `(("gerbil" ,gerbil-unstable))))))
+#+end_src
+
+
+* Gerbil Poo
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil-poo (@ (druix versions) <druix-version-git>)
+ #:repo "https://github.com/fare/gerbil-poo.git"
+ #:major 0 #:minor 0)
+
+;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil-poo.scm"
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-poo.scm
+(define-module (druix packages scheme gerbil gerbil-poo)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix packages scheme gerbil gerbil-utils)
+  #:use-module (druix utils)
+  #:use-module (druix build-system gerbil)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module (guix packages)
+  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module (gnu packages)
+  #:use-module (gnu packages base)
+  #:use-module (guix git-download))
+
+(define-public gerbil-poo
+  (let ((v (car (@ (druix versions gerbil-poo) versions))))
+
+  (package
+    (name "gerbil-poo")
+    (synopsis "Gerbil POO: Prototype Object Orientation for Gerbil Scheme")
+    (license l:lgpl2.1)
+    (description synopsis)
+    (home-page "https://github.com/fare/gerbil-poo")
+    (version (v:druix-version v))
+    (build-system gerbil-build-system)
+    (source
+     (origin
+       (method git-fetch)
+       (uri (git-reference
+             (url (v:repo v))
+             (commit (v:commit v))))
+       (file-name (git-file-name name (v:commit v)))
+       (sha256 (base32 (v:sha256 v)))))
+    (inputs `(("gerbil" ,gerbil-unstable)
+              ("gerbil-utils" ,gerbil-utils))))))
+#+end_src

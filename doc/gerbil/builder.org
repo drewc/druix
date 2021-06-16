@@ -3,32 +3,69 @@
 
 * Locations: Where to place what?
 
-- ~/.gerbil/pkg :: */share/gerbil*
-- ~/.gerbil/lib :: */lib/gerbil*
-- ~/.gerbil/bin :: */bin*
+- ~/.gerbil/pkg/ :: */share/gerbil/*
+
+   We'll copy all the source over.
+
+- ~/.gerbil/ :: */lib/gerbil/*
+
+  Gerbil places its own ~bin~ and ~lib~ dirs here.
+  It is where we compile the */share/gerbil/* source towards.
+
+- ~/.gerbil/bin/ :: */bin/*
+
+  Symlink the ~/lib/gerbil/lib/bin~ files over to ~/bin~.
 
 
-* ~GERBIL_LOADPATH~
+* ~GERBIL_LOADPATH~, an important asset
 
-The environment variable ~GERBIL_LOADPATH~, tells *Gerbil* where to find the
-modules to load.
+#+begin_src scheme :noweb-ref gerbil-loadpath
+(define (path-exists? path)
+  (access? path F_OK))
+
+(define (gerbil-loadpath inputs)
+  (define paths
+    (filter path-exists?
+            (map (lambda (i)
+                       (string-append (cdr i)
+                                      "/lib/gerbil/lib"))
+                     inputs)))
+  (string-join
+           (append
+            (let ((v (getenv "GERBIL_LOADPATH")))
+              (if v (list v) '()))
+            paths)
+           ":"))
+#+end_src
+
+* Shebang! A ~gerbil-build/shebang~ builder
+
+Often we want to run a ~.ss~ file under ~gxi~. We need to set up a proper
+enviroments to collect our ~/gnu/~ stored libraries and run the interpreter.
 
 #+begin_src scheme
-(define (gerbil-load-path paths)
-  (define glps (or (let ((p (getenv "GERBIL_LOADPATH")))
-                     (and p (list p)))
-                  '()))
-  (string-join (append glps paths) ":"))
+(define (string<-shebang ss inputs outputs)
+  (with-output-to-string
+    (lambda ()
+      (display "#!/bin/sh
+ORIG_GERBIL_LOADPATH=\"\\$GERBIL_LOADPATH\"
+ORIG_GERBIL_PATH=\"\\$GERBIL_PATH\"
+ORIG_GERBIL_HOME=\"\\$GERBIL_HOME\"
+unset GERBIL_HOME
+GERBIL_LOADPATH=\"")
+      (display (gerbil-loadpath inputs))
+    )
+        )
 #+end_src
+
+
 
 * ~(druix build gerbil-build-system)~ The build expression
 
 Guix compiles the expression that builds a package at "runtime". Those forms
 come from here.
 
-
-
-#+begin_src scheme :tangle "../../druix/build/gerbil-build-system.scm"
+#+begin_src scheme :tangle "../../druix/build/gerbil-build-system.scm" :noweb yes
 (define-module (druix build gerbil-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
   #:use-module (guix build utils)
@@ -37,20 +74,15 @@ come from here.
 (define %lib-prefix "/lib/gerbil")
 (define %pkg-prefix "/share/gerbil")
 
+(define (empty-directory? path)
+  (define d (opendir path))
+  (eof-object? (begin (readdir d) (readdir d) (readdir d))))
+
+<<gerbil-loadpath>>
+
 (define (setenv-GERBIL_LOADPATH inputs)
-  (define paths (map (lambda (i) (if (pair? i) (cdr i) i))
-                     inputs))
-  (invoke "echo" (car paths))
   (setenv "GERBIL_LOADPATH"
-          (string-join
-           (append
-            (let ((v (getenv "GERBIL_LOADPATH")))
-              (if v (list v) '()))
-            (map (lambda (p) (string-append p "/lib/gerbil"))
-               paths))
-           ":")))
-
-
+          (gerbil-loadpath inputs)))
 
 (define (gxpkg-name outputs)
   (let* ((out (assoc-ref outputs "out")))
@@ -75,11 +107,10 @@ come from here.
     (setenv "GERBIL_PATH" gpath)
     (setenv-GERBIL_LOADPATH inputs)
     (setenv "GAMBOPT" "i8,f8,-8,t8")
+    (invoke "echo" "GERBIL_LOADPATH=" (getenv "GERBIL_LOADPATH"))
     #t))
 
-(define (empty-directory? path)
-  (define d (opendir path))
-  (eof-object? (begin (readdir d) (readdir d) (readdir d))))
+
 
 (define* (build #:key outputs (build-script "./build.ss") #:allow-other-keys)
   (with-directory-excursion (gxpkg-source-directory outputs)
@@ -89,7 +120,8 @@ come from here.
         (bin (string-append (gxpkg-lib-directory outputs)
                                               "/bin")))
     (if (not (empty-directory? bin))
-      (copy-recursively bin (string-append out "/bin"))))'
+      (invoke "cp" "-as" bin (string-append out "/bin"))
+      (invoke "rmdir" bin)))
   #t)
 
 (define %standard-phases
@@ -119,7 +151,7 @@ come from here.
 
 #+end_src
 
-* ~(druix build-system gerbil)~, the use of building
+* ~(druix build-system gerbil)~, the use of the build expression
 
 #+begin_src scheme :tangle "../../druix/build-system/gerbil.scm"
 (define-module (druix build-system gerbil)
