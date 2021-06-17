@@ -7,6 +7,28 @@
       #:major
       0
       #:minor
+      1
+      #:patch
+      #f
+      #:revision
+      #f
+      #:ymd
+      20210617
+      #:hms
+      204527
+      #:sha256
+      "078hlj23viqi51l422v9vskwfrjx8n6aqinvlczra0fw1fhsmaka"
+      #:repo
+      "https://github.com/drewc/druix.git"
+      #:commit
+      "0043ff3c04bd21e229b3c1e190b1922a3db17708")
+
+    (make <druix-version-git>
+      #:name
+      "druix"
+      #:major
+      0
+      #:minor
       0
       #:patch
       #f

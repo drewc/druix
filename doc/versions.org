@@ -1,4 +1,4 @@
-#+TITLE: Versions: Automagic "unstable" revisions
+#+TITLE: Versions: Auto-magic "unstable" revisions
 
 As a bleeding-edge hacker I often need to use the last commit in the main/master branch as a starting point. Then, I may need a commit that was that, but now is in the past.
 
@@ -37,11 +37,14 @@ What that does the first time around is create a file
 
 
 * Entry Point: ~ensure-druix-versions~ creates a (druix versions ...) module
+:PROPERTIES:
+:CUSTOM_ID: ensureDruixVersions
+:END:
 
 
 To create a derivation a source tree with a verified *sha256* hash is required.
 Really that's all we care about. ~ensure-druix-versions~ sets it up so that is
-automagically taken from a module.
+auto-magically taken from a module.
 
 #+begin_src scheme :noweb-ref ensure-druix-versions
 (define* (ensure-druix-versions
@@ -150,14 +153,92 @@ To boot:
 And note the module name can differ from the version name.
 
 
-
-
 ** A list of ~versions~
 
 One of the reasons we keep a list of versions is because we may want to keep the
 previous version around.
 
-For example: right now I'll commit this literate file up to this point for demonstrative purposes.
+For example: right now I'll commit and push this literate file up to this point
+for demonstrative purposes.
+
+Now to run the ~ensure-druix-versions~ again.
+
+#+begin_src scheme
+(define versions
+  ((@ (druix versions) ensure-druix-versions)
+   'druix #:repo "https://github.com/drewc/druix.git"))
+#+end_src
+
+Because I just commited, and there was a previous version, there are now two
+versions. with different revisions and commits.
+
+#+begin_src scheme
+(map (@ (druix versions) druix-version) versions)
+;; => ("0.0-23-g0043ff3c" "0.0-22-g21e58ac7")
+#+end_src
+
+The fact that happens automatically is a big plus.
+
+** Version Numbers: Manual or Automatic
+
+Sometimes a manual transmission is in fact needed. If there is nothing else to
+go by we set our semantic version to [[#ensureDruixVersions][0.0]].
+
+#+begin_src scheme
+(define versions
+  ((@ (druix versions) ensure-druix-versions)
+   'druix #:repo "https://github.com/drewc/druix.git"
+   #:patch 42))
+#+end_src
+
+But what if we decide that we want, say, a patch number? Because the actual
+commit is the same we end up with just two versions, but the latest a wee bit
+different.
+
+#+begin_src scheme
+(map (@ (druix versions) druix-version) versions)
+;; => ("0.0.42-23-g0043ff3c" "0.0-22-g21e58ac7")
+#+end_src
+
+Yet, the entire point behind ~(druix versions)~ is auto-magic.
+
+Often, these days, a git repository is tagged and annotated with the version.
+
+As an example, now I'll add the first tag to a druix repo.
+
+#+begin_quote
+Annotated tags are meant for release while lightweight tags are meant for
+private or temporary object labels. For this reason, some git commands for
+naming objects (like git describe) will ignore lightweight tags by default.
+
+-- ~man git tag~
+#+end_quote
+
+Ok! Let's do it.
+
+#+begin_src shell
+git tag -a 'v0.1' -m "Add a first minor release tag"
+git push --tags
+#+end_src
+
+What happens to the versions now? We can drop our manual ~patch~, release the
+clutch and go back to auto-magic.
+
+#+begin_src scheme
+(define versions
+  ((@ (druix versions) ensure-druix-versions)
+   'druix #:repo "https://github.com/drewc/druix.git"))
+#+end_src
+
+That magic is great. We are now at a minor release but the same commit.
+
+#+begin_src scheme
+(map (@ (druix versions) druix-version) versions)
+;; => ("0.1-g0043ff3c" "0.0-22-g21e58ac7")
+#+end_src
+
+Also note there is no revision. ~git describe --tags~ is what is used to get the
+version number which we then somewhat recreate.
 
 
 ** The details of the implementation
@@ -197,6 +278,8 @@ For example: right now I'll commit this literate file up to this point for demon
                      (set! (major nv) (major obj)))
                  (if (not (minor nv))
                      (set! (minor nv) (minor obj)))
+                 (if (not (patch nv))
+                     (set! (patch nv) (patch obj)))
                  nv))
          (restvs (if (null? oldvs) oldvs
                      (if (equal? (commit (car oldvs)) (commit newv))
@@ -204,7 +287,8 @@ For example: right now I'll commit this literate file up to this point for demon
                          oldvs)))
          (versions (cons newv restvs)))
     (write-druix-versions-file sym versions)
-    (reload-module (resolve-module `(druix versions ,sym)))
+    (let ((m (resolve-module `(druix versions ,sym))))
+     (and m (reload-module m)))
     versions))
 
 #+end_src
@@ -214,7 +298,7 @@ Versioning is very important. Most of the time we simply want the most "recent",
 so often care not. That means the care is placed on the package manager, which
 in this case is defined by us.
 
-Metacircles aside, we do need to have a versioning that makes sense to both the
+Meta-circles aside, we do need to have a versioning that makes sense to both the
 end user and the package management software.
 
 ** First Case, gambit-c-unstable.
@@ -223,7 +307,7 @@ end user and the package management software.
 :END:
 
 In the end what we desire for our first case is the following file used to
-autogenerate "itself" with a newer version.
+auto-generate "itself" with a newer version.
 
 #+begin_src scheme :tangle ../druix/versions/gambit-c-unstable.scm :mkdirp t
 (define-module (druix versions gambit-c-unstable)
@@ -523,3 +607,10 @@ Let's try it out.
 [fn:1] Make a bug report or even better a PR if it does not work :)
 
 [fn:0] https://cons.io
+
+#  LocalWords:  druix repo src oop goops fn sha noweb ref sname klass args ymd
+#  LocalWords:  hms yq bf pr pz sgwhr xhalsz pm gl ig wx ac dc edc repos guix
+#  LocalWords:  druixVersionGitRepo pkg dirname dvp eval vfldr fname scm sym nv
+#  LocalWords:  obj vpath oldvs newv restvs cdr Versioning versioning mkdirp xf
+#  LocalWords:  versionFirstCase zyvs qazqbqczbsspqrz vzsabg kbz xxxvkqimc init
+#  LocalWords:  dbaabfd bbdfae accessor rev baa druixVersionGit alist dv str
