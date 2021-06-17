@@ -14,16 +14,13 @@ we go meta on *Guile*! :)
 All we need to do is this.
 
 #+begin_src scheme
-(use-modules ((druix versions) #:prefix v:))
 (v:ensure-druix-versions
  'gerbil v:<druix-version-git>
  #:repo "https://github.com/vyzo/gerbil.git")
-
-;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil.scm"
 #+end_src
 
 What that does the first time around is create a file
-~./druix/versions/gerbil-unstable.scm~ that looks like the following.
+~./druix/versions/gerbil.scm~ that looks like the following.
 
 #+begin_src scheme
 (define-module (druix versions gerbil)
@@ -37,9 +34,135 @@ What that does the first time around is create a file
       #:commit "7e8b4baaf563b7cd804b3b653d4823b9762f5c87")))
 #+end_src
 
-* Entry Point: ~ensure-druix-versions~
+
+
+* Entry Point: ~ensure-druix-versions~ creates a (druix versions ...) module
+
+
+To create a derivation a source tree with a verified *sha256* hash is required.
+Really that's all we care about. ~ensure-druix-versions~ sets it up so that is
+automagically taken from a module.
 
 #+begin_src scheme :noweb-ref ensure-druix-versions
+(define* (ensure-druix-versions
+          sname #:optional (klass <druix-version-git>)
+          #:key (name (if (string? sname) sname (symbol->string sname)))
+          #:allow-other-keys #:rest args)
+  (ensure-druix-versions-from-object
+   sname (apply make klass #:name name args)))
+#+end_src
+
+While that returns what we need, that's not all it does. Watch.
+
+#+begin_src scheme
+(define versions
+  ((@ (druix versions) ensure-druix-versions)
+   'druix #:repo "https://github.com/drewc/druix.git"))
+#+end_src
+
+By pointing to almost[fn:1] any repo we not only get the sha256 but a whole lot
+more. First off imagine a version as a form that makes a versions. Meta.
+
+#+begin_src scheme
+(map (@ (druix versions) form<-druix-version) versions)
+
+;; => ((make <druix-version-git>
+;;  #:name "druix" #:major 0 #:minor 0
+;;  #:patch #f #:revision 22 #:ymd 20210616 #:hms 32910
+;;  #:sha256 "01f6yq173id1bf0pr08pz5sgwhr3l3xhalsz2m56pm6gl99ig1wx"
+;;  #:repo "https://github.com/drewc/druix.git"
+;;  #:commit "21e58ac74b90dc51d7c9e98b69edc835215228f0"))
+#+end_src
+
+Because we do not set a ~major~ or ~minor~ the semantic version is, by default
+for some repos, *0.0*.
+
+But note the ~revision~, ~ymd~, ~hms~ and ~commit~? Where do they come from?
+
+There's a function, [[#druixVersionGitRepo][~druix-version<-git-repo~]], that does so for us, and allows a
+version number string that climbs every time.
+
+We call that string a ~druix-version~.
+
+#+begin_src scheme
+(define latest (car versions))
+((@ (druix versions) druix-version) latest) ;; => "0.0-22-g21e58ac7"
+#+end_src
+
+With all of that we have what is needed to make a *guix package*. Yay!
+
+
+** The Module File: ~#:export (versions latest)~
+
+We cannot lookup the version every time we want to load a package. And we must
+note that it is a list of versions created.
+
+Multiple versions need stored somewhere and our ~ensure~ did just that.
+
+Essentially ~(@ (druix version [...]) latest)~ is what is left behind.
+
+#+begin_src scheme
+((@ (druix versions) druix-version)
+ (@ (druix versions druix) latest)) ;; => "0.0-22-g21e58ac7"
+#+end_src
+
+That's all done and eventually output to a file port by
+~string<-druix-module-definition~.
+
+#+begin_src scheme :noweb-ref string<-druix-module-definition
+(define (string<-druix-module-definition name versions)
+  ;; => string
+  (with-output-to-string
+    (lambda ()
+      (write (form<-define-versions-module name))
+      (newline)
+      (display (string<-druix-versions versions))
+      (newline)
+      (write '(define latest (car versions)))
+      (newline))))
+#+end_src
+
+To boot:
+
+#+begin_src scheme
+(display
+ ((@ (druix versions) string<-druix-module-definition)
+  'this-is-the-module-and-file-name
+  (@ (druix versions druix) versions)))
+
+;; (define-module (druix versions this-is-the-module-and-file-name)
+;;   #:use-module (druix versions) #:use-module (oop goops)
+;;   #:export (versions latest))
+;;
+;;
+;; (define versions
+;;   (list
+;;    (make <druix-version-git> #:name "druix"
+;;          #:major 0 #:minor 0 #:patch #f #:revision 22 #:ymd 20210616 #:hms 32910
+;;          #:sha256 "01f6yq173id1bf0pr08pz5sgwhr3l3xhalsz2m56pm6gl99ig1wx" #:repo
+;;          "https://github.com/drewc/druix.git" #:commit
+;;          "21e58ac74b90dc51d7c9e98b69edc835215228f0")))
+
+;; (define latest (car versions))
+
+#+end_src
+
+And note the module name can differ from the version name.
+
+
+
+
+** A list of ~versions~
+
+One of the reasons we keep a list of versions is because we may want to keep the
+previous version around.
+
+For example: right now I'll commit this literate file up to this point for demonstrative purposes.
+
+
+** The details of the implementation
+
+#+begin_src scheme :noweb-ref and-ensure-druix-versions
 (define (get-druix-versions-path pkg-name)
   (%search-load-path
    (string-append "druix/versions/" (symbol->string pkg-name))))
@@ -54,33 +177,22 @@ What that does the first time around is create a file
       (eval `(@ (druix versions ,pkg-name) versions)
             (interaction-environment))))
 
-(define (ensure-druix-versions name klass . args)
-  (define obj (apply make klass args))
-  (ensure-druix-versions-from-object name obj))
-
-(define (create-druix-versions-file name versions)
-  ;; => string
-  (with-output-to-string
-    (lambda ()
-      (write (make-define-module-form-for-versions name))
-      (newline)
-      (display (string<-druix-versions versions)))))
-
 (define (write-druix-versions-file name versions)
   (define vfldr (druix-versions-folder))
   (define fname (string-append vfldr "/" (symbol->string name) ".scm"))
   (with-output-to-file fname
-    (lambda () (display (create-druix-versions-file name versions))))
+    (lambda () (display (string<-druix-module-definition name versions))))
   fname)
 
 (define-generic ensure-druix-versions-from-object)
 (define-method (ensure-druix-versions-from-object
-                name (obj <druix-version-git>))
-  (define vpath (get-druix-versions-path name))
+                sym (obj <druix-version-git>))
+  (define vpath (get-druix-versions-path sym))
   (define vfldr (druix-versions-folder))
   (let* ((repo (ensure-git-repo (repo obj)))
-         (oldvs (if vpath (find-druix-versions name) '()))
+         (oldvs (if vpath (find-druix-versions sym) '()))
          (newv (let ((nv (druix-version<-git-repo (class-of obj) repo)))
+                 (set! (name nv) (name obj))
                  (if (not (major nv))
                      (set! (major nv) (major obj)))
                  (if (not (minor nv))
@@ -89,8 +201,11 @@ What that does the first time around is create a file
          (restvs (if (null? oldvs) oldvs
                      (if (equal? (commit (car oldvs)) (commit newv))
                          (cdr oldvs)
-                         oldvs))))
-    (write-druix-versions-file name (cons newv restvs))))
+                         oldvs)))
+         (versions (cons newv restvs)))
+    (write-druix-versions-file sym versions)
+    (reload-module (resolve-module `(druix versions ,sym)))
+    versions))
 
 #+end_src
 * Version Numbers
@@ -131,6 +246,7 @@ autogenerate "itself" with a newer version.
 ;;; (use-modules (oop goops))
 
 (define-class <druix-version> ()
+  (name #:accessor name #:init-value "unnamed" #:init-keyword #:name)
   (major #:accessor major #:init-value 0 #:init-keyword #:major)
   (minor #:accessor minor #:init-value 0  #:init-keyword #:minor)
   (patch #:accessor patch #:init-value #f #:init-keyword #:patch)
@@ -199,6 +315,9 @@ so that can be ignored.
 #+end_src
 
 ** ~druix-version<-git-repo~
+:PROPERTIES:
+:CUSTOM_ID: druixVersionGitRepo
+:END:
 
 Now that we have that, using a bunch of [[file:utils.org][(druix utils)]] we can make a [[*~<druix-version-git>~
  subclass][~<druix-version-git>~]] from the most recent commit by default, or whatever the
@@ -207,9 +326,12 @@ passed checkout (~repo-or-uri~) has.
 #+begin_src scheme :noweb-ref druix-version<-git-repo
 (define (druix-version<-git-repo klass repo-or-uri . uri-args)
   (define grepo (apply ensure-git-repo repo-or-uri uri-args))
+  (define gbranch (with-directory-excursion grepo
+      ($cmd "git" "branch" "--show-current")))
   (define vrev
-    (string->number (with-directory-excursion grepo
-      ($cmd "git" "rev-list" "master" "--count"))))
+    (string->number
+     (with-directory-excursion grepo
+      ($cmd "git" "rev-list" gbranch "--count"))))
   (define gcommit (git-repo-current-commit grepo))
 
   (define gdesc (git-repo-describe--tags grepo))
@@ -241,13 +363,13 @@ passed checkout (~repo-or-uri~) has.
 #+end_src
 
 ()
-** ~make-form<-druix-version~, metatime!
+** ~form-<druix-version~, metatime!
 
 This remakes a ~make <class> initargs ...~ form.
 
 #+begin_src scheme :noweb-ref form-from
-(define-generic make-form<-druix-version)
-(define-method (make-form<-druix-version (v <druix-version>))
+(define-generic form<-druix-version)
+(define-method (form<-druix-version (v <druix-version>))
   (define slots
     (filter (lambda (sd)
               (slot-bound? v (slot-definition-name sd)))
@@ -306,22 +428,22 @@ which means that this is exactly what we want to generate our new version!
 The file starts with a ~define-module~
 
 #+begin_src scheme :noweb-ref define-module-form
-(define (make-define-module-form-for-versions name)
+(define (form<-define-versions-module name)
   `(define-module
      (druix versions ,(if (string? name) (string->symbol name) name))
      #:use-module (druix versions)
      #:use-module (oop goops)
-     #:export (versions)))
+     #:export (versions latest)))
 #+end_src
 
 Let's try it out.
 
 #+begin_src scheme
-> (make-define-module-form-for-versions 'gambit-c-unstable)
+> (form<-define-versions-module 'gambit-c-unstable)
 => (define-module (druix versions gambit-c-unstable)
      #:use-module (druix versions)
      #:use-module (oop goops)
-     #:export (versions))
+     #:export (versions latest))
 #+end_src
 
 ** ~string<-druix-versions~.
@@ -336,7 +458,7 @@ Let's try it out.
              (if (not one) (newline) (set! one #f))
              (display "    ")
              (pretty-print form))
-           (map make-form<-druix-version vs))
+           (map form<-druix-version vs))
       (display "))")
       (newline)))))
 #+end_src
@@ -363,8 +485,10 @@ Let's try it out.
    alist<-parse-druix-version
    druix-version<-git-repo
 
-   druix-version form<-druix-version
-   make-define-module-form-for-versions
+   druix-version
+   form<-druix-version
+   form<-define-versions-module
+   string<-druix-module-definition
 
    ensure-druix-versions
 
@@ -388,11 +512,14 @@ Let's try it out.
 
 <<druix-version<-git-repo>>
 
-<<ensure-druix-versions>>
+<<string<-druix-module-definition>>
 
+<<and-ensure-druix-versions>>
+<<ensure-druix-versions>>
 
 #+end_src
 
 * Footnotes
+[fn:1] Make a bug report or even better a PR if it does not work :)
 
 [fn:0] https://cons.io
