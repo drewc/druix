@@ -1,7 +1,9 @@
-(define-module (druix versions gerbil-poo) #:use-module (druix versions) #:use-module (oop goops) #:export (versions))
+(define-module (druix versions gerbil-poo) #:use-module (druix versions) #:use-module (oop goops) #:export (versions latest))
 (define versions 
   (list 
     (make <druix-version-git>
+      #:name
+      "gerbil-poo"
       #:major
       0
       #:minor
@@ -21,3 +23,5 @@
       #:commit
       "8ab28efe1dd828a0a83195d81164588a0fb404a0")
 ))
+
+(define latest (car versions))

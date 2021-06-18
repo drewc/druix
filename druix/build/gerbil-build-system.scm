@@ -55,6 +55,7 @@
     (setenv-GERBIL_LOADPATH inputs)
     (setenv "GAMBOPT" "i8,f8,-8,t8")
     (invoke "echo" "GERBIL_LOADPATH=" (getenv "GERBIL_LOADPATH"))
+   ; (invoke "pkg-config" "--libs" "libsecp256k1")
     #t))
 
 

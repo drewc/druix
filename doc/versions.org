@@ -237,9 +237,36 @@ That magic is great. We are now at a minor release but the same commit.
 ;; => ("0.1-g0043ff3c" "0.0-22-g21e58ac7")
 #+end_src
 
-Also note there is no revision. ~git describe --tags~ is what is used to get the
-version number which we then somewhat recreate.
+Also note there is no revision. ~git describe --tags~ is what is used to get
+theversion number which we then somewhat recreate.
 
+#+begin_src shell
+_repo=`mktemp -d` ; cd $_repo; git clone "https://github.com/drewc/druix.git" ;
+cd druix ; git describe --tags ; cd - ; rm -rf $_repo;
+
+=> v0.1
+#+end_src
+
+What if the author now commits?
+
+#+begin_src shell
+git add doc/versions.org druix/versions/druix.scm
+git commit -m "Add a revision to new v0.1 tag"
+git push
+#+end_src
+
+
+#+begin_src scheme
+(define versions
+  ((@ (druix versions) ensure-druix-versions)
+   'druix #:repo "https://github.com/drewc/druix.git"))
+
+(map (@ (druix versions) druix-version) versions)
+
+;; => ("0.1-1-g523985cb" "0.1-g0043ff3c" "0.0-22-g21e58ac7")
+#+end_src
+
+Awesome!
 
 ** The details of the implementation
 
@@ -561,7 +588,7 @@ Let's try it out.
   #:use-module (ice-9 pretty-print)
   #:export
   (<druix-version>
-   major minor patch revision ymd hms sha256
+   name major minor patch revision ymd hms sha256
 
    <druix-version-git>
    repo commit

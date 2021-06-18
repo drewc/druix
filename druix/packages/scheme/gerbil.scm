@@ -95,8 +95,8 @@
           (add-before 'patch-generated-file-shebangs 'fake-bin
             ,gerbil-unstable-fake-/bin))))
       (inputs `(("gambit-c-unstable" ,gambit-c-unstable)
-                ("gcc-toolchain" ,gcc-toolchain)
-                ("linux-headers" ,linux-libre-headers)))
+                #;("gcc-toolchain" ,gcc-toolchain)
+                #;("linux-headers" ,linux-libre-headers)))
       (native-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
                        ("openssl" ,openssl)
                        ("lmdb" ,lmdb)
@@ -105,7 +105,7 @@
                        ("mysql" ,mysql)
                        ("libyaml" ,libyaml)
                        ("libxml2" ,libxml2)
-                       ("zlib" ,zlib))))))
+                       ("zlib" ,zlib))  ))))
 
 
 (define-public gerbil-packages

@@ -7,7 +7,7 @@
   #:use-module (ice-9 pretty-print)
   #:export
   (<druix-version>
-   major minor patch revision ymd hms sha256
+   name major minor patch revision ymd hms sha256
 
    <druix-version-git>
    repo commit
@@ -15,8 +15,10 @@
    alist<-parse-druix-version
    druix-version<-git-repo
 
-   druix-version form<-druix-version
-   make-define-module-form-for-versions
+   druix-version
+   form<-druix-version
+   form<-define-versions-module
+   string<-druix-module-definition
 
    ensure-druix-versions
 
@@ -29,6 +31,7 @@
 ;;; (use-modules (oop goops))
 
 (define-class <druix-version> ()
+  (name #:accessor name #:init-value "unnamed" #:init-keyword #:name)
   (major #:accessor major #:init-value 0 #:init-keyword #:major)
   (minor #:accessor minor #:init-value 0  #:init-keyword #:minor)
   (patch #:accessor patch #:init-value #f #:init-keyword #:patch)
@@ -47,8 +50,8 @@
    (let ((rev (revision v)))
      (if rev (string-append "-" (number->string rev)) ""))))
 
-(define-generic make-form<-druix-version)
-(define-method (make-form<-druix-version (v <druix-version>))
+(define-generic form<-druix-version)
+(define-method (form<-druix-version (v <druix-version>))
   (define slots
     (filter (lambda (sd)
               (slot-bound? v (slot-definition-name sd)))
@@ -71,12 +74,12 @@
   (define c (string-copy (commit v) 0 8))
   (string-append (next-method) "-g" c))
 
-(define (make-define-module-form-for-versions name)
+(define (form<-define-versions-module name)
   `(define-module
      (druix versions ,(if (string? name) (string->symbol name) name))
      #:use-module (druix versions)
      #:use-module (oop goops)
-     #:export (versions)))
+     #:export (versions latest)))
 
 (define (string<-druix-versions vs)
   (with-output-to-string
@@ -87,7 +90,7 @@
              (if (not one) (newline) (set! one #f))
              (display "    ")
              (pretty-print form))
-           (map make-form<-druix-version vs))
+           (map form<-druix-version vs))
       (display "))")
       (newline)))))
 
@@ -124,9 +127,12 @@
 
 (define (druix-version<-git-repo klass repo-or-uri . uri-args)
   (define grepo (apply ensure-git-repo repo-or-uri uri-args))
+  (define gbranch (with-directory-excursion grepo
+      ($cmd "git" "branch" "--show-current")))
   (define vrev
-    (string->number (with-directory-excursion grepo
-      ($cmd "git" "rev-list" "master" "--count"))))
+    (string->number
+     (with-directory-excursion grepo
+      ($cmd "git" "rev-list" gbranch "--count"))))
   (define gcommit (git-repo-current-commit grepo))
 
   (define gdesc (git-repo-describe--tags grepo))
@@ -156,6 +162,17 @@
     #:commit gcommit
     #:sha256 gsha256))
 
+(define (string<-druix-module-definition name versions)
+  ;; => string
+  (with-output-to-string
+    (lambda ()
+      (write (form<-define-versions-module name))
+      (newline)
+      (display (string<-druix-versions versions))
+      (newline)
+      (write '(define latest (car versions)))
+      (newline))))
+
 (define (get-druix-versions-path pkg-name)
   (%search-load-path
    (string-append "druix/versions/" (symbol->string pkg-name))))
@@ -170,40 +187,42 @@
       (eval `(@ (druix versions ,pkg-name) versions)
             (interaction-environment))))
 
-(define (ensure-druix-versions name klass . args)
-  (define obj (apply make klass args))
-  (ensure-druix-versions-from-object name obj))
-
-(define (create-druix-versions-file name versions)
-  ;; => string
-  (with-output-to-string
-    (lambda ()
-      (write (make-define-module-form-for-versions name))
-      (newline)
-      (display (string<-druix-versions versions)))))
-
 (define (write-druix-versions-file name versions)
   (define vfldr (druix-versions-folder))
   (define fname (string-append vfldr "/" (symbol->string name) ".scm"))
   (with-output-to-file fname
-    (lambda () (display (create-druix-versions-file name versions))))
+    (lambda () (display (string<-druix-module-definition name versions))))
   fname)
 
 (define-generic ensure-druix-versions-from-object)
 (define-method (ensure-druix-versions-from-object
-                name (obj <druix-version-git>))
-  (define vpath (get-druix-versions-path name))
+                sym (obj <druix-version-git>))
+  (define vpath (get-druix-versions-path sym))
   (define vfldr (druix-versions-folder))
   (let* ((repo (ensure-git-repo (repo obj)))
-         (oldvs (if vpath (find-druix-versions name) '()))
+         (oldvs (if vpath (find-druix-versions sym) '()))
          (newv (let ((nv (druix-version<-git-repo (class-of obj) repo)))
+                 (set! (name nv) (name obj))
                  (if (not (major nv))
                      (set! (major nv) (major obj)))
                  (if (not (minor nv))
                      (set! (minor nv) (minor obj)))
+                 (if (not (patch nv))
+                     (set! (patch nv) (patch obj)))
                  nv))
          (restvs (if (null? oldvs) oldvs
                      (if (equal? (commit (car oldvs)) (commit newv))
                          (cdr oldvs)
-                         oldvs))))
-    (write-druix-versions-file name (cons newv restvs))))
+                         oldvs)))
+         (versions (cons newv restvs)))
+    (write-druix-versions-file sym versions)
+    (let ((m (resolve-module `(druix versions ,sym))))
+     (and m (reload-module m)))
+    versions))
+
+(define* (ensure-druix-versions
+          sname #:optional (klass <druix-version-git>)
+          #:key (name (if (string? sname) sname (symbol->string sname)))
+          #:allow-other-keys #:rest args)
+  (ensure-druix-versions-from-object
+   sname (apply make klass #:name name args)))

@@ -177,7 +177,7 @@
                       #true))))
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
-    (inputs `(("gcc-toolchain" ,gcc-toolchain)
+    #;(inputs `(("gcc-toolchain" ,gcc-toolchain)
               ("linux-headers" ,linux-libre-headers)))
     (native-inputs `(("gambit-c-bootstrap", bootstrap)
                      ("openssl" ,openssl)))))

@@ -1,0 +1,86 @@
+#+TITLE: CLAN: The CL Archive Network for Gerbil
+
+* Gerbil Utils
+:PROPERTIES:
+:CUSTOM_ID: gerbilUtils
+:END:
+
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil-utils #:repo "https://github.com/fare/gerbil-utils.git")
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-utils.scm
+(define-module (druix packages scheme gerbil gerbil-utils)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix utils gerbil-packages)
+  #:use-module ((guix licenses) #:prefix l:))
+
+(define-public gerbil-utils
+  (gxpkg/clan
+   (@ (druix versions gerbil-utils) latest)
+   "Gerbil Clan: Community curated Collection of Common Utilities"
+   "https://github.com/fare/gerbil-utils" l:lgpl2.1
+   `(("gerbil" ,gerbil-unstable))
+   #:clan '(#:software-name "Gerbil-utils"
+            #:gerbil-package "clan"
+            #:version-path "version")))
+#+end_src
+
+* Gerbil Poo
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil-poo #:repo "https://github.com/fare/gerbil-poo.git")
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-poo.scm
+(define-module (druix packages scheme gerbil gerbil-poo)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix utils gerbil-packages)
+  #:use-module (druix packages scheme gerbil gerbil-utils))
+
+(define-public gerbil-poo
+  (gxpkg/clan
+   (@ (druix versions gerbil-poo) latest)
+    "Gerbil POO: Prototype Object Orientation for Gerbil Scheme"
+    "https://github.com/fare/gerbil-poo" (@ (guix licenses) asl2.0)
+    `(("gerbil" ,gerbil-unstable)
+      ("gerbil-utils" ,gerbil-utils))
+    #:clan '(#:software-name "Gerbil-POO"
+            #:gerbil-package "clan/poo"
+            #:version-path "version")))
+#+end_src
+
+* Gerbil crypto
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil-crypto #:repo "https://github.com/fare/gerbil-crypto.git")
+#+end_src
+
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-crypto.scm
+(define-module (druix packages scheme gerbil gerbil-crypto)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix packages scheme gerbil gerbil-utils)
+  #:use-module (druix packages scheme gerbil gerbil-poo)
+  #:use-module (gnu packages crypto)
+  #:use-module (gnu packages pkg-config)
+  #:use-module (druix utils gerbil-packages))
+
+(define-public gerbil-crypto
+  (gxpkg/clan
+   (@ (druix versions gerbil-crypto) latest)
+   "Gerbil Crypto: Extra Cryptographic Primitives for Gerbil"
+   "https://github.com/fare/gerbil-crypto" (@ (guix licenses) asl2.0)
+   `(("gerbil" ,gerbil-unstable)
+     ("gerbil-utils" ,gerbil-utils)
+     ("gerbil-poo" ,gerbil-poo)
+     ("libsecp256k1", libsecp256k1)
+     ("pkg-config", pkg-config))
+   #:clan '(#:software-name "Gerbil-crypto"
+            #:gerbil-package "clan/crypto"
+            #:version-path "version")))
+
+#+end_src
