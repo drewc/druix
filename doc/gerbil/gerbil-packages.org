@@ -29,7 +29,7 @@ The ~gxpkg~ procedure.
 
 * The ~:clan~ friends: ~gxpkg/clan~
 
-Like many things, for example Gambit's [[file:~/me/guix/src/druix/doc/scheme/gambit.org::#stampH][~include/stamp.h~]], these packages have
+Like many things, for example Gambit's [[./../scheme/gambit.org::#stampH][~include/stamp.h~]], these packages have
 something that is there for release and auto-generated using *git* for
 development.
 
