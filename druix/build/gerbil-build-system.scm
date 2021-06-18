@@ -1,7 +1,9 @@
 (define-module (druix build gerbil-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
   #:use-module (guix build utils)
-  #:export (%standard-phases gerbil-build))
+  #:export (%standard-phases
+            gerbil-loadpath
+            gerbil-build))
 
 (define %lib-prefix "/lib/gerbil")
 (define %pkg-prefix "/share/gerbil")

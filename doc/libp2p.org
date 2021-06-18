@@ -1,0 +1,24 @@
+#+TITLE: Libp2p: All the uses maybe come here
+
+
+* Gerbil's ~gerbil-libp2p~
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil-libp2p #:repo "https://github.com/vyzo/gerbil-libp2p.git")
+#+end_src
+
+#+begin_src scheme :tangle ../druix/packages/scheme/gerbil/gerbil-libp2p.scm
+(define-module (druix packages scheme gerbil gerbil-libp2p)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix utils gerbil-packages)
+  #:use-module ((guix licenses) #:prefix l:))
+
+(define-public gerbil-libp2p
+  (gxpkg
+   (@ (druix versions gerbil-libp2p) latest)
+   "Gerbil libp2p: use libp2p from Gerbil"
+   "https://github.com/vyzo/gerbil-libp2p.git"
+   (l:fsf-free "https://mit-license.org/")
+   `(("gerbil" ,gerbil-unstable))))
+#+end_src

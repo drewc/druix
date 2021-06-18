@@ -9,6 +9,7 @@ The ~gxpkg~ procedure.
                      #:key
                      (description synopsis)
                      (name (v:name druix-version))
+                     (arguments '())
                      #:allow-other-keys)
   (let ((v druix-version))
     (package
@@ -16,6 +17,7 @@ The ~gxpkg~ procedure.
       (home-page home-page) (description description)
       (build-system gerbil-build-system) (inputs inputs)
       (version (v:druix-version v))
+      (arguments arguments)
       (source
        (origin
          (method git-fetch)
@@ -27,6 +29,28 @@ The ~gxpkg~ procedure.
       )))
 #+end_src
 
+* Shebang! A ~#!gxi~ builder
+
+Often we want to run a ~.ss~ file under ~gxi~. We need to set up a proper
+enviroments to collect our ~/gnu/~ stored libraries and run the interpreter.
+
+#+begin_src scheme
+(define (string<-shebang ss inputs outputs)
+  (with-output-to-string
+    (lambda ()
+      (display "#!/bin/sh
+ORIG_GERBIL_LOADPATH=\"\\$GERBIL_LOADPATH\"
+ORIG_GERBIL_PATH=\"\\$GERBIL_PATH\"
+ORIG_GERBIL_HOME=\"\\$GERBIL_HOME\"
+unset GERBIL_HOME
+GERBIL_LOADPATH=") (write (gerbil-loadpath inputs))
+    )
+        )
+#+end_src
+
+
+
+
 * The ~:clan~ friends: ~gxpkg/clan~
 
 Like many things, for example Gambit's [[./../scheme/gambit.org::#stampH][~include/stamp.h~]], these packages have
@@ -35,6 +59,8 @@ development.
 
 Because ~druix~ is mostly bleedin' edge, and we cannot use the ~.git~ as it
 constantly changes, we need to to so manually.
+
+** The clan ~version.ss~
 
 For example, our first package is the ~:clan~ module, ~gerbil-utils~, which is
 apparently named "Gerbil-utils".
@@ -159,6 +185,7 @@ If an input is in fact a ~clan-package?~ then we have all we need to create the 
 #+begin_src scheme :noweb-ref package-with-clan-version
 (define (package-with-clan-version pkg date)
   (define clan (clan-package? pkg))
+  (define args (package-arguments pkg))
   (define imports (imports<-inputs (package-inputs pkg)))
   (define* (%vstr #:key software-name #:allow-other-keys)
     (string<-clan-version
@@ -172,12 +199,16 @@ If an input is in fact a ~clan-package?~ then we have all we need to create the 
      clan))
   (define vstr (apply %vstr clan))
   (define phases
-    `(modify-phases %standard-phases
-       (add-before 'copy-source 'write-clan-version
-         (lambda _
-           (with-output-to-file ,vpath
-             (lambda () (display ,vstr)))
-                 (invoke "echo" "Made" ,vpath "from" ,vstr)))))
+    (let-keywords
+     (package-arguments pkg) #t
+     ((phases '%standard-phases))
+     `(begin
+        (modify-phases ,phases
+        (add-before 'copy-source 'write-clan-version
+          (lambda _
+            (with-output-to-file ,vpath
+              (lambda () (display ,vstr)))
+            (invoke "echo" "Made" ,vpath "from" ,vstr)))))))
 
   (package (inherit pkg)
            (arguments (cons* #:phases phases (package-arguments pkg)))))
@@ -195,14 +226,8 @@ If an input is in fact a ~clan-package?~ then we have all we need to create the 
    (package-with-clan-version
      (package
        (inherit parent)
-       (arguments `(#:clan ,clan)))
-     ((@ (druix versions) ymd) druix-version)
-
-        ))
-)
-#+end_src
-#+begin_src scheme
-(define (gxpkg/clan c;))
+       (arguments `(#:clan ,clan ,@(package-arguments parent))))
+     ((@ (druix versions) ymd) druix-version))))
 #+end_src
 
 * /File/ ~druix/utils/gerbil-packages.scm~
@@ -214,8 +239,11 @@ If an input is in fact a ~clan-package?~ then we have all we need to create the 
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
   #:use-module (gnu packages)
+  #:use-module (ice-9 optargs)
   #:use-module (gnu packages base)
   #:use-module (guix git-download)
+  #:use-module (guix build utils)
+  #:use-module (druix build gerbil-build-system)
   #:export (gxpkg gxpkg/clan clan-package?))
 
 <<make-gxpkg>>

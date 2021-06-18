@@ -4,14 +4,18 @@
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
   #:use-module (gnu packages)
+  #:use-module (ice-9 optargs)
   #:use-module (gnu packages base)
   #:use-module (guix git-download)
+  #:use-module (guix build utils)
+  #:use-module (druix build gerbil-build-system)
   #:export (gxpkg gxpkg/clan clan-package?))
 
 (define* (gxpkg druix-version synopsis home-page license inputs
                      #:key
                      (description synopsis)
                      (name (v:name druix-version))
+                     (arguments '())
                      #:allow-other-keys)
   (let ((v druix-version))
     (package
@@ -19,6 +23,7 @@
       (home-page home-page) (description description)
       (build-system gerbil-build-system) (inputs inputs)
       (version (v:druix-version v))
+      (arguments arguments)
       (source
        (origin
          (method git-fetch)
@@ -51,6 +56,7 @@
 
 (define (package-with-clan-version pkg date)
   (define clan (clan-package? pkg))
+  (define args (package-arguments pkg))
   (define imports (imports<-inputs (package-inputs pkg)))
   (define* (%vstr #:key software-name #:allow-other-keys)
     (string<-clan-version
@@ -64,21 +70,19 @@
      clan))
   (define vstr (apply %vstr clan))
   (define phases
-    `(modify-phases %standard-phases
-       (add-before 'copy-source 'write-clan-version
-         (lambda _
-           (with-output-to-file ,vpath
-             (lambda () (display ,vstr)))
-                 (invoke "echo" "Made" ,vpath "from" ,vstr)))))
+    (let-keywords
+     (package-arguments pkg) #t
+     ((phases '%standard-phases))
+     `(begin
+        (modify-phases ,phases
+        (add-before 'copy-source 'write-clan-version
+          (lambda _
+            (with-output-to-file ,vpath
+              (lambda () (display ,vstr)))
+            (invoke "echo" "Made" ,vpath "from" ,vstr)))))))
 
   (package (inherit pkg)
            (arguments (cons* #:phases phases (package-arguments pkg)))))
-
-
-
-
-
-
 
 (define* (gxpkg/clan druix-version synopsis home-page license inputs
                      #:key clan #:allow-other-keys #:rest args)
@@ -88,8 +92,5 @@
    (package-with-clan-version
      (package
        (inherit parent)
-       (arguments `(#:clan ,clan)))
-     ((@ (druix versions) ymd) druix-version)
-
-        ))
-)
+       (arguments `(#:clan ,clan ,@(package-arguments parent))))
+     ((@ (druix versions) ymd) druix-version))))

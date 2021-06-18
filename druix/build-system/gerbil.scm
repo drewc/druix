@@ -7,8 +7,7 @@
   #:use-module (guix derivations)
   #:use-module (ice-9 match)
   #:use-module (guix search-paths)
-  #:export (%standard-phases
-            gerbil-build
+  #:export (gerbil-build
             gerbil-build-system))
 
 (define %gerbil-build-modules

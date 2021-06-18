@@ -38,27 +38,6 @@
            ":"))
 #+end_src
 
-* Shebang! A ~gerbil-build/shebang~ builder
-
-Often we want to run a ~.ss~ file under ~gxi~. We need to set up a proper
-enviroments to collect our ~/gnu/~ stored libraries and run the interpreter.
-
-#+begin_src scheme
-(define (string<-shebang ss inputs outputs)
-  (with-output-to-string
-    (lambda ()
-      (display "#!/bin/sh
-ORIG_GERBIL_LOADPATH=\"\\$GERBIL_LOADPATH\"
-ORIG_GERBIL_PATH=\"\\$GERBIL_PATH\"
-ORIG_GERBIL_HOME=\"\\$GERBIL_HOME\"
-unset GERBIL_HOME
-GERBIL_LOADPATH=\"")
-      (display (gerbil-loadpath inputs))
-    )
-        )
-#+end_src
-
-
 
 * ~(druix build gerbil-build-system)~ The build expression
 
@@ -69,7 +48,9 @@ come from here.
 (define-module (druix build gerbil-build-system)
   #:use-module ((guix build gnu-build-system) #:prefix gnu:)
   #:use-module (guix build utils)
-  #:export (%standard-phases gerbil-build))
+  #:export (%standard-phases
+            gerbil-loadpath
+            gerbil-build))
 
 (define %lib-prefix "/lib/gerbil")
 (define %pkg-prefix "/share/gerbil")
@@ -164,8 +145,7 @@ come from here.
   #:use-module (guix derivations)
   #:use-module (ice-9 match)
   #:use-module (guix search-paths)
-  #:export (%standard-phases
-            gerbil-build
+  #:export (gerbil-build
             gerbil-build-system))
 
 (define %gerbil-build-modules
