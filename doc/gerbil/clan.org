@@ -118,7 +118,8 @@
 
 #+begin_src scheme
 ((@ (druix versions) ensure-druix-versions)
- 'gerbil-ethereum #:repo "https://github.com/fare/gerbil-ethereum.git")
+ 'gerbil-ethereum #:repo "https://github.com/fare/gerbil-ethereum.git"
+ #:commit "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
 #+end_src
 
 #+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-ethereum.scm

@@ -14,27 +14,93 @@ we go meta on *Guile*! :)
 All we need to do is this.
 
 #+begin_src scheme
-(v:ensure-druix-versions
- 'gerbil v:<druix-version-git>
- #:repo "https://github.com/vyzo/gerbil.git")
+((@ (druix versions) ensure-druix-versions)
+ 'gerbil #:repo "https://github.com/vyzo/gerbil.git")
+
+;; => (#<<druix-version-git>>)
 #+end_src
 
 What that does the first time around is create a file
-~./druix/versions/gerbil.scm~ that looks like the following.
+~./druix/versions/gerbil.scm~ that looks like the following and contains the
+same versions as is returned.
 
 #+begin_src scheme
 (define-module (druix versions gerbil)
-  #:use-module (druix versions) #:use-module (oop goops) #:export (versions))
+  #:use-module (druix versions) #:use-module (oop goops)
+  #:export (versions latest))
+
 (define versions
   (list
     (make <druix-version-git>
-      #:major 0 #:minor 16 #:patch #f #:revision 187
+      #:name "gerbil" #:major 0 #:minor 16 #:patch #f #:revision 187
+      #:ymd 20200202 #:hms 202020
+      #:sha256 "0yqsjyk1gzfnvp4rvs8q06v7vcdgbnpw9bpa03f36zkzp466gdyl"
+      #:repo "https://github.com/vyzo/gerbil.git"
+      #:commit "7e8b4baaf563b7cd804b3b653d4823b9762f5c87")))
+
+(define latest (car versions))
+#+end_src
+
+It's important to note that it returns a list. When running it later on, if
+there has been a change in the HEAD commit, it still has the other versions but
+changes the ~latest~.
+
+#+begin_src scheme
+(define versions
+  (list
+    (make <druix-version-git>
+      #:name "gerbil" #:major 0 #:minor 16 #:patch #f #:revision 192
+      #:ymd 20210608 #:hms 122759
+      #:sha256 "0jm331giq0m73l66xc9mjzzbvmg4jxqkmcxc68fjywrcxa07xx31"
+      #:repo "https://github.com/vyzo/gerbil.git"
+      #:commit "fa9537be0848e54d2c68165503b9cc48babb9334")
+
+    (make <druix-version-git>
+      #:name "gerbil" #:major 0 #:minor 16 #:patch #f #:revision 188
+      #:ymd 20201212 #:hms 121220
+      #:sha256 "1br42b7slyas4cjs0hhh85s9s0inag3d85jva8ym4di0k756v327"
+      #:repo "https://github.com/vyzo/gerbil.git"
+      #:commit "237627a4bf573e372ed3cd539a35c0f8477b8879")
+
+    (make <druix-version-git>
+      #:name "gerbil" #:major 0 #:minor 16 #:patch #f #:revision 187
+      #:ymd 20200202 #:hms 202020
       #:sha256 "0yqsjyk1gzfnvp4rvs8q06v7vcdgbnpw9bpa03f36zkzp466gdyl"
       #:repo "https://github.com/vyzo/gerbil.git"
       #:commit "7e8b4baaf563b7cd804b3b653d4823b9762f5c87")))
 #+end_src
 
+** Make a specific commit the ~latest~.
 
+Sometimes we specifically a certain commit. Breaking changes mean that HEAD of
+master/main is not always a good idea.
+
+In essense, add a #:commit argument.
+
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions) 'gerbil-ethereum
+ #:repo "https://github.com/fare/gerbil-ethereum.git"
+ #:commit "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
+#+end_src
+
+Because we have already run it to find out HEAD breaks we end up with this.
+
+#+begin_src scheme
+(define versions
+  (list
+    (make <druix-version-git>
+      #:name "gerbil-ethereum" #:major 0 #:minor 0 #:patch #f #:revision 283
+      #:ymd 20210603 #:hms 13312
+      #:sha256 "0h6fbn8q8iqyq0ynky2nbl7qz126nv9lmayjv234g0vbc8vh9ylz"
+      #:repo "https://github.com/fare/gerbil-ethereum.git"
+      #:commit "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
+
+    (make <druix-version-git>
+      #:name "gerbil-ethereum" #:major 0 #:minor 0 #:patch #f #:revision 285 #:ymd 20210618 #:hms 103357
+      #:sha256 "0x9fbgm7pwrqdnn68sa2xynb1gfahzi1c6hqbmhgnbyh9dw807i0"
+      #:repo "https://github.com/fare/gerbil-ethereum.git"
+      #:commit "bb6dc2c6390cb12078edbaf762519ff938ac4579")))
+#+end_src
 
 * Entry Point: ~ensure-druix-versions~ creates a (druix versions ...) module
 :PROPERTIES:
@@ -296,10 +362,17 @@ Awesome!
 (define-method (ensure-druix-versions-from-object
                 sym (obj <druix-version-git>))
   (define vpath (get-druix-versions-path sym))
+  (define commit? (commit obj))
   (define vfldr (druix-versions-folder))
-  (let* ((repo (ensure-git-repo (repo obj)))
-         (oldvs (if vpath (find-druix-versions sym) '()))
-         (newv (let ((nv (druix-version<-git-repo (class-of obj) repo)))
+  (define git-repo (ensure-git-repo (repo obj)))
+
+  (and commit? (with-directory-excursion git-repo
+                ($cmd "git" "checkout" commit?)))
+
+  (let* ((oldvs (if vpath (find-druix-versions sym) '()))
+         (newv (let ((nv (druix-version<-git-repo
+                          (class-of obj)
+                          git-repo)))
                  (set! (name nv) (name obj))
                  (if (not (major nv))
                      (set! (major nv) (major obj)))
@@ -505,7 +578,7 @@ This remakes a ~make <class> initargs ...~ form.
 #+begin_src scheme :noweb-ref druix-version-git-class
 (define-class <druix-version-git> (<druix-version>)
   (repo #:accessor repo #:init-keyword #:repo)
-  (commit #:accessor commit #:init-keyword #:commit))
+  (commit #:accessor commit #:init-keyword #:commit #:init-value #f))
 
 (define-method (druix-version (v <druix-version-git>))
   (define c (string-copy (commit v) 0 8))

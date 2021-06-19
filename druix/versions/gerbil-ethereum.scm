@@ -11,6 +11,28 @@
       #:patch
       #f
       #:revision
+      283
+      #:ymd
+      20210603
+      #:hms
+      13312
+      #:sha256
+      "0h6fbn8q8iqyq0ynky2nbl7qz126nv9lmayjv234g0vbc8vh9ylz"
+      #:repo
+      "https://github.com/fare/gerbil-ethereum.git"
+      #:commit
+      "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
+
+    (make <druix-version-git>
+      #:name
+      "gerbil-ethereum"
+      #:major
+      0
+      #:minor
+      0
+      #:patch
+      #f
+      #:revision
       285
       #:ymd
       20210618

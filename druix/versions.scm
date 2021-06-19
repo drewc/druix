@@ -68,7 +68,7 @@
 
 (define-class <druix-version-git> (<druix-version>)
   (repo #:accessor repo #:init-keyword #:repo)
-  (commit #:accessor commit #:init-keyword #:commit))
+  (commit #:accessor commit #:init-keyword #:commit #:init-value #f))
 
 (define-method (druix-version (v <druix-version-git>))
   (define c (string-copy (commit v) 0 8))
@@ -198,10 +198,17 @@
 (define-method (ensure-druix-versions-from-object
                 sym (obj <druix-version-git>))
   (define vpath (get-druix-versions-path sym))
+  (define commit? (commit obj))
   (define vfldr (druix-versions-folder))
-  (let* ((repo (ensure-git-repo (repo obj)))
-         (oldvs (if vpath (find-druix-versions sym) '()))
-         (newv (let ((nv (druix-version<-git-repo (class-of obj) repo)))
+  (define git-repo (ensure-git-repo (repo obj)))
+
+  (and commit? (with-directory-excursion git-repo
+                ($cmd "git" "checkout" commit?)))
+
+  (let* ((oldvs (if vpath (find-druix-versions sym) '()))
+         (newv (let ((nv (druix-version<-git-repo
+                          (class-of obj)
+                          git-repo)))
                  (set! (name nv) (name obj))
                  (if (not (major nv))
                      (set! (major nv) (major obj)))
