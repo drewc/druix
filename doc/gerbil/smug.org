@@ -1,57 +1,26 @@
-#+TITLE: Smug
-
-* Versions in ~(druix versions gerbil-smug)~
+#+TITLE: SMUG: Super Monadic Über Go-into : Parsers for Gerbil Scheme
 
 
 #+begin_src scheme
 (use-modules ((druix versions) #:prefix v:))
 (v:ensure-druix-versions
- 'gerbil-smug v:<druix-version-git>
+ 'smug-gerbil v:<druix-version-git>
  #:repo "https://github.com/drewc/smug-gerbil.git")
 
 ;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil-smug.scm"
 #+end_src
 
-#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/smug.scm
-(define-module (druix packages scheme gerbil smug)
+#+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/smug-gerbil.scm
+(define-module (druix packages scheme gerbil smug-gerbil)
   #:use-module (druix packages scheme gerbil)
-  #:use-module (druix utils)
-  #:use-module (druix build-system gerbil)
-  #:use-module (gnu packages commencement)
-  #:use-module (gnu packages scheme)
-  #:use-module (gnu packages linux)
-  #:use-module ((druix versions gerbil-smug) #:prefix dvg:)
-  #:use-module ((druix versions) #:prefix v:)
-  #:use-module (guix packages)
-  #:use-module ((guix licenses) #:prefix l:)
-  #:use-module (gnu packages)
-  #:use-module (gnu packages base)
-  #:use-module (guix git-download)
-  #:use-module (guix store))
+  #:use-module (druix utils gerbil-packages)
+  #:use-module ((guix licenses) #:prefix l:))
 
-(define-public smug
-  (let ((v (car (@ (druix versions gerbil-smug) versions))))
-
-  (package
-    (name "smug-gerbil")
-    (version (v:druix-version v))
-    (build-system gerbil-build-system)
-    (source
-     (origin
-       (method git-fetch)
-       (uri (git-reference
-             (url (v:repo v))
-             (commit (v:commit v))))
-       (file-name (git-file-name "smug-gerbil" (v:commit v)))
-       (sha256 (base32 (v:sha256 v)))))
-    (license (l:fsf-free "https://mit-license.org/"))
-    (synopsis "Super Monadic Über Go-into : Parsers for Gerbil Scheme")
-    (description synopsis)
-    (home-page "https://github.com/drewc/smug-gerbil")
-    (native-inputs `(("gerbil" ,gerbil-unstable)
-              ("linux-headers" ,linux-libre-headers)
-              ("gcc-toolchain" ,gcc-toolchain)))
-    (inputs `(("gerbil" ,gerbil-unstable)
-              ("linux-headers" ,linux-libre-headers)
-              ("gcc-toolchain" ,gcc-toolchain))))))
+(define-public smug-gerbil
+  (gxpkg
+   (@ (druix versions smug-gerbil) latest)
+   "Super Monadic Über Go-into : Parsers for Gerbil Scheme"
+   "https://github.com/drewc/smug-gerbil"
+   (l:fsf-free "https://mit-license.org/")
+   `(("gerbil" ,gerbil-unstable))))
 #+end_src
