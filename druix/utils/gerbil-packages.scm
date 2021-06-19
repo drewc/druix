@@ -1,5 +1,6 @@
 (define-module (druix utils gerbil-packages)
   #:use-module (druix utils)
+  #:use-module (druix utils plists)
   #:use-module (druix build-system gerbil)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
@@ -58,31 +59,34 @@
   (define clan (clan-package? pkg))
   (define args (package-arguments pkg))
   (define imports (imports<-inputs (package-inputs pkg)))
-  (define* (%vstr #:key software-name #:allow-other-keys)
+
+  (define* vstr
     (string<-clan-version
-     software-name
+     (plist-get clan #:software-name)
      (string-append "v" (package-version pkg))
      imports date))
   (define vpath
-    (apply
-     (lambda* (#:key version-path #:allow-other-keys)
-       (string-append version-path ".ss"))
-     clan))
-  (define vstr (apply %vstr clan))
-  (define phases
+    (string-append (plist-get clan #:version-path) ".ss"))
+
+  (define our-phases
     (let-keywords
      (package-arguments pkg) #t
      ((phases '%standard-phases))
      `(begin
-        (modify-phases ,phases
-        (add-before 'copy-source 'write-clan-version
-          (lambda _
-            (with-output-to-file ,vpath
-              (lambda () (display ,vstr)))
-            (invoke "echo" "Made" ,vpath "from" ,vstr)))))))
+        (let ((old-phases ,phases))
+          (modify-phases old-phases
+            (add-before 'copy-source 'write-clan-version
+              (lambda _
+                (with-output-to-file ,vpath
+                  (lambda () (display ,vstr)))
+                (invoke "echo" "Made" ,vpath "from: \n" ,vstr)
+                #t)))))))
 
-  (package (inherit pkg)
-           (arguments (cons* #:phases phases (package-arguments pkg)))))
+  (define parent-args (plist-delete args #:phases))
+
+  (package
+    (inherit pkg)
+    (arguments (cons* #:phases our-phases parent-args))))
 
 (define* (gxpkg/clan druix-version synopsis home-page license inputs
                      #:key clan #:allow-other-keys #:rest args)
