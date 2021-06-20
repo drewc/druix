@@ -1,0 +1,426 @@
+#+TITLE: Go: Wake me up, before you C Go.
+
+This is the first attempt at a *Go* packages, like a yoyo.
+
+* ~go-build-system~ and ~make-go-package~
+
+#+begin_quote
+This variable is exported by (guix build-system go). It implements a build
+procedure for Go packages using the standard Go build mechanisms.
+
+The user is expected to provide a value for the key #:import-path and, in some
+cases, #:unpack-path. The import path corresponds to the file system path
+expected by the package’s build scripts and any referring packages, and provides
+a unique way to refer to a Go package. It is typically based on a combination of
+the package source code’s remote URI and file system hierarchy structure. In
+some cases, you will need to unpack the package’s source code to a different
+directory structure than the one indicated by the import path, and #:unpack-path
+should be used in such cases.
+
+Packages that provide Go libraries should install their source code into the
+built output. The key #:install-source?, which defaults to #t, controls whether
+or not the source code is installed. It can be set to #f for packages that only
+provide executable files.
+
+-- https://guix.gnu.org/manual/en/html_node/Build-Systems.html
+#+end_quote
+
+#+begin_src scheme
+;; Go software, whether a package or a command, is uniquely named using an
+;; 'import path'.  The import path is based on the URL of the software's source.
+;; Because most source code is provided over the internet, the import path is
+;; typically a combination of the remote URL and the source repository's file
+;; system structure. For example, the Go port of the common `du` command is
+;; hosted on github.com, at <https://github.com/calmh/du>.  Thus, the import
+;; path is <github.com/calmh/du>.
+#+end_src
+
+* Import path: becomes repo and name
+
+So, in ~guix/gnu/packages/golang.scm~ they seem to set a precendent. At least
+for some packages lol.
+
+Here's our first.
+
+   + #:import-path :: "github.com/VictoriaMetrics/fastcache"
+
+
+   + git repo :: "https://github.com/VictoriaMetrics/fastcache.git"
+     #+begin_src scheme :noweb-ref git-repo<-import-path
+(define (git-repo<-import-path ip)
+  (string-append "https://" ip ".git"))
+     #+end_src
+
+   + package name :: "go-github-com-VictoriaMetrics-fastcache"
+     #+begin_src scheme :noweb-ref package-name<-import-path
+ (define (package-name<-import-path ip)
+   (list->string
+    (cons* #\g #\o #\-
+           (map (lambda (c) (if (member c '(#\. #\/)) #\- c))
+                (string->list ip)))))
+     #+end_src
+
+   + home page ::
+
+     #+begin_src scheme :noweb-ref home-page<-import-path
+(define (home-page<-import-path ip)
+  (string-append "https://" ip ))
+     #+end_src
+
+
+
+* Druix versions
+  We need a ~<druix-version>~.
+
+We'll make the #:unpack-path here as well in case it, and therefore the repo, differ.
+
+#+begin_src scheme :noweb-ref ensure-go-druix-versions
+(define* (ensure-go-druix-versions ip #:key (unpack-path ip) . args)
+  (apply (@ (druix versions) ensure-druix-versions)
+         (string->symbol (package-name<-import-path ip))
+         #:repo (git-repo<-import-path unpack-path)
+         args))
+#+end_src
+
+* Make Go Package
+And a simple way to make a package.
+
+#+begin_src scheme :noweb-ref make-go-package
+(define* (make-go-package
+          ip synopsis
+          #:key
+          (home-page (home-page<-import-path ip))
+          (description synopsis)
+          (license l:expat)
+          (inputs '())
+          (phases '%standard-phases)
+          (unpack-path #f))
+  (let* ((name (package-name<-import-path ip))
+         (latest-version
+          (module-ref (resolve-module `(druix versions ,(string->symbol name)))
+                      'latest)))
+    (package
+      (name name) (version (v:druix-version latest-version))
+      (synopsis synopsis) (home-page home-page) (description description)
+      (license license) (build-system go-build-system)
+      (arguments `(#:import-path ,ip #:phases ,phases
+                   ,@(if (not unpack-path) '()
+                         (list #:unpack-path unpack-path))))
+      (inputs inputs)
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url (v:repo latest-version))
+               (commit (v:commit latest-version))))
+         (sha256 (base32 (v:sha256 latest-version)))
+         (file-name (git-file-name name version)))))))
+#+end_src
+
+* Publicize Go Package
+Packages need to be exported in order for ~guix install~ to pick them up.
+
+#+begin_src scheme :noweb-ref publicize-go-package
+(define-macro (define-public-go-package ip synop . args)
+    `(define-public ,(string->symbol (package-name<-import-path ip)) (apply make-go-package ,ip ,synop (list ,@args))))
+#+end_src
+
+* /File/ ~(druix utils go-packages)~
+
+#+begin_src scheme :tangle ../druix/utils/go-packages.scm :noweb yes
+(define-module (druix utils go-packages)
+  #:use-module (druix utils)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module (guix packages)
+  #:use-module (gnu packages golang)
+  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module (guix build-system go)
+  #:use-module (guix git-download)
+  #:export
+  (ensure-go-druix-versions
+   make-go-package
+   define-public-go-package))
+
+<<git-repo<-import-path>>
+
+<<package-name<-import-path>>
+<<home-page<-import-path>>
+
+<<ensure-go-druix-versions>>
+
+<<make-go-package>>
+
+<<publicize-go-package>>
+#+end_src
+
+
+* Whole Lotta Packages
+
+To make it simple we'll print a form that we copy/paste.
+
+#+begin_src scheme
+(define* (pgpd import-path #:optional (syn "Put synopsis here") #:key (up #f))
+  (newline)
+  (newline)
+  (display (string-append ";; " (package-name<-import-path import-path)))
+  (newline)
+  (write `((@ (druix utils go-packages) ensure-go-druix-versions)
+           ,import-path ,@(if up (list #:unpack-path up) '())))
+  (newline)
+  (display (string-append ";; " (package-name<-import-path import-path)))
+  (newline)
+  (write `(define-public-go-package ,import-path ,syn))
+  (newline)
+  (newline)
+  (flush-all-ports))
+
+(pgpd "github.com/go-sourcemap/sourcemap")
+
+(pgpd "github.com/edsrzf/mmap-go" "A portable mmap package for Go")
+(pgpd "github.com/fjl/memsize" "memsize computes the size of your object graph")
+
+(pgpd "github.com/gballet/go-libpcsclite" "A golang implementation of the libpcpsclite client")
+
+(pgpd "github.com/go-stack/stack" "Package stack implements utilities to capture, manipulate, and format call stacks.")
+(pgpd "github.com/golang/protobuf" "Go support for Protocol Buffers")
+
+(pgpd "github.com/gorilla/websocket" "A fast, well-tested and widely used WebSocket implementation for Go.")
+
+(pgpd "github.com/graph-gophers/graphql-go"
+      "GraphQL server with a focus on ease of use")
+
+(pgpd "github.com/opentracing/opentracing-go"
+      "OpenTracing API for Go")
+
+(pgpd "github.com/hashicorp/golang-lru"
+      "Golang LRU cache")
+
+(pgpd "github.com/holiman/bloomfilter/v2" "syn" #:up "github.com/holiman/bloomfilter")
+
+#+end_src
+
+
+
+#+begin_src scheme
+;; named go-github-com-VictoriaMetrics-fastcache
+((@ (druix utils go-packages) ensure-go-druix-versions)
+"github.com/VictoriaMetrics/fastcache")
+
+;; go-github-com-deckarep-golang-set
+((@ (druix utils go-packages) ensure-go-druix-versions)
+  "github.com/deckarep/golang-set")
+
+;; go-github-com-dop251-goja
+((@ (druix utils go-packages) ensure-go-druix-versions)
+ "github.com/dop251/goja")
+
+;; go-github-com-go-sourcemap-sourcemap
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/go-sourcemap/sourcemap")
+
+;; go-github-com-edsrzf-mmap-go
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/edsrzf/mmap-go")
+
+;; go-github-com-fjl-memsize
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/fjl/memsize")
+
+;; go-github-com-gballet-go-libpcsclite
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/gballet/go-libpcsclite")
+
+
+;; go-github-com-go-stack-stack
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/go-stack/stack")
+
+
+
+;; go-github-com-golang-protobuf
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/golang/protobuf")
+
+;; go-github-com-gorilla-websocket
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/gorilla/websocket")
+
+
+
+;; go-github-com-graph-gophers-graphql-go
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/graph-gophers/graphql-go")
+
+
+;; go-github-com-opentracing-opentracing-go
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/opentracing/opentracing-go")
+
+
+
+;; go-github-com-hashicorp-golang-lru
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/hashicorp/golang-lru")
+
+
+;; go-github-com-holin-bloomfilter-v2
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/holiman/bloomfilter/v2"
+ #:unpack-path "github.com/holiman/bloomfilter")
+#+end_src
+
+#+begin_src scheme :tangle ../druix/packages/golang.scm
+(define-module (druix packages golang)
+  #:use-module (druix utils)
+  #:use-module (druix utils go-packages)
+  #:use-module ((druix versions) #:prefix v:)
+  #:use-module (guix packages)
+  #:use-module (gnu packages golang)
+  #:use-module (gnu packages syncthing)
+  #:use-module (guix build-system gnu)
+  #:use-module (guix build-system go)
+  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module (guix git-download)
+  #:re-export
+  (go
+   go-github-com-davecgh-go-spew
+   go-github-com-dlclark-regexp2
+   go-golang-org-x-text
+   go-gopkg-in-yaml-v2
+   go-golang-org-x-sys
+   go-github-com-fatih-color
+   go-github-com-golang-protobuf-proto
+   go-github-com-golang-snappy
+   go-github-com-google-uuid
+   )
+  ;; public
+
+;; go-github-com-VictoriaMetrics-fastcache
+;; go-github-com-deckarep-go
+;; go-github-com-dop251-goja
+)
+
+;; go-github-com-VictoriaMetrics-fastcache
+ (define-public-go-package
+  "github.com/VictoriaMetrics/fastcache"
+  "Fast thread-safe inmemory cache for big number of entries in Go.")
+
+;; go-github-com-deckarep-golang-set
+ (define-public-go-package
+  "github.com/deckarep/golang-set"
+  "A simple set type for the Go language."
+  #:description "A simple set type for the Go language. Trusted by Docker, 1Password, Ethereum and Hashicorp.")
+
+;;
+(define-public-go-package
+  "github.com/go-sourcemap/sourcemap"
+  "Source maps consumer for Golang"
+  #:phases '(modify-phases %standard-phases
+              (delete 'check)))
+
+;; go-github-com-dop251-goja
+(define-public-go-package
+  "github.com/dop251/goja"
+  "ECMAScript/JavaScript engine in pure Go"
+   #:inputs `(("perl", (@ (gnu packages perl) perl))
+              ("go-github-com-dlclark-regexp2"
+               ,go-github-com-dlclark-regexp2)
+              ("go-github-com-go-sourcemap-sourcemap"
+               , go-github-com-go-sourcemap-sourcemap)
+              ("go-golang-org-x-text" ,go-golang-org-x-text)
+              ("gopkg.in/yaml.v2" ,go-gopkg-in-yaml-v2))
+    #:phases '(modify-phases %standard-phases (delete 'check)))
+
+;; go-github-com-edsrzf-mmap-go
+(define-public-go-package
+  "github.com/edsrzf/mmap-go" "A portable mmap package for Go"
+  #:inputs `(("golang.org/x/sys" ,go-golang-org-x-sys)))
+
+;; go-github-com-fjl-memsize
+(define-public-go-package "github.com/fjl/memsize" "memsize computes the size of your object graph")
+
+
+;; go-github-com-gballet-go-libpcsclite
+(define-public-go-package "github.com/gballet/go-libpcsclite" "A golang implementation of the libpcpsclite client")
+
+
+;; go-github-com-go-stack-stack
+(define-public-go-package "github.com/go-stack/stack" "Package stack implements utilities to capture, manipulate, and format call stacks.")
+
+;; ;; go-github-com-golang-protobuf
+;; (define-public-go-package "github.com/golang/protobuf"
+;;   "Go support for Protocol Buffers")
+
+(define-public go-github-com-golang-protobuf-protoc-gen-go-descriptor
+  (package
+    (name "go-github-com-golang-protobuf-protoc-gen-go-descriptor")
+    (version "1.3.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/golang/protobuf")
+                     (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "15am4s4646qy6iv0g3kkqq52rzykqjhm4bf08dk0fy2r58knpsyl"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/golang/protobuf/protoc-gen-go/descriptor"
+       #:unpack-path "github.com/golang/protobuf"
+       ;; Requires unpackaged golang.org/x/sync/errgroup
+       #:tests? #f))
+    (synopsis "Go support for Protocol Buffers")
+    (description "This package provides Go support for the Protocol Buffers
+data serialization format.")
+    (home-page "https://github.com/golang/protobuf")
+    (license l:bsd-3)))
+
+
+;; go-github-com-gorilla-websocket
+(define-public-go-package "github.com/gorilla/websocket"
+  "A fast, well-tested and widely used WebSocket implementation for Go.")
+
+;; go-github-com-opentracing-opentracing-go
+(define-public-go-package "github.com/opentracing/opentracing-go" "OpenTracing API for Go"
+  #:phases '(modify-phases %standard-phases (delete 'check)))
+
+;; go-github-com-graph-gophers-graphql-go
+(define-public-go-package "github.com/graph-gophers/graphql-go"
+  "GraphQL server with a focus on ease of use"
+  #:inputs `(("go-github-com-opentracing-opentracing-go"
+             ,go-github-com-opentracing-opentracing-go))
+  #:phases '(modify-phases %standard-phases (delete 'check)))
+
+
+
+;; go-github-com-hashicorp-golang-lru
+(define-public-go-package "github.com/hashicorp/golang-lru" "Golang LRU cache")
+
+
+;; go-github-com-holiman-bloomfilter-v2
+(define-public-go-package "github.com/holiman/bloomfilter/v2" "syn"
+  #:unpack-path "github.com/holiman/bloomfilter")
+#+end_src
+
+#+begin_quote
+src/github.com/ethereum/go-ethereum/consensus/ethash/ethash.go:36:2: cannot find package  in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/edsrzf/mmap-go (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/edsrzf/mmap-go (from $GOPATH)
+src/github.com/ethereum/go-ethereum/internal/jsre/pretty.go:28:2: cannot find package "github.com/fatih/color" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/fatih/color (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/fatih/color (from $GOPATH)
+src/github.com/ethereum/go-ethereum/internal/debug/flags.go:30:2: cannot find package "github.com/fjl/memsize/memsizeui" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/fjl/memsize/memsizeui (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/fjl/memsize/memsizeui (from $GOPATH)
+src/github.com/ethereum/go-ethereum/accounts/scwallet/hub.go:48:2: cannot find package "github.com/gballet/go-libpcsclite" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/gballet/go-libpcsclite (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/gballet/go-libpcsclite (from $GOPATH)
+src/github.com/ethereum/go-ethereum/log/handler.go:11:2: cannot find package "github.com/go-stack/stack" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/go-stack/stack (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/go-stack/stack (from $GOPATH)
+src/github.com/ethereum/go-ethereum/accounts/usbwallet/trezor/messages-common.pb.go:10:2: cannot find package "github.com/golang/protobuf/proto" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/golang/protobuf/proto (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/golang/protobuf/proto (from $GOPATH)
+src/github.com/ethereum/go-ethereum/accounts/usbwallet/trezor/messages.pb.go:11:2: cannot find package "github.com/golang/protobuf/protoc-gen-go/descriptor" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/golang/protobuf/protoc-gen-go/descriptor (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/golang/protobuf/protoc-gen-go/descriptor (from $GOPATH)
+src/github.com/ethereum/go-ethereum/core/rawdb/freezer_table.go:32:2: cannot find package "github.com/golang/snappy" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/golang/snappy (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/golang/snappy (from $GOPATH)
+src/github.com/ethereum/go-ethereum/accounts/keystore/key.go:35:2: cannot find package "github.com/google/uuid" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/google/uuid (from $GOROOT)
+        /tmp/guix-build-go-ethereum-1.10.4-gaa637fd3.drv-14/src/github.com/google/uuid (from $GOPATH)
+src/github.com/ethereum/go-ethereum/rpc/websocket.go:32:2: cannot find package "github.com/gorilla/websocket" in any of:
+        /gnu/store/y5rwacd5l4q26pxis28wsmswj2603hkw-go-1.14.15/src/github.com/gorilla/websocket (from $GOROOT)
+
+#+end_quote
