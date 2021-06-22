@@ -94,7 +94,7 @@
             ,gerbil-unstable-before-build-form)
           (add-before 'patch-generated-file-shebangs 'fake-bin
             ,gerbil-unstable-fake-/bin))))
-      (inputs `(("gambit-c-unstable" ,gambit-c-unstable)
+      (propagated-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
                 #;("gcc-toolchain" ,gcc-toolchain)
                 #;("linux-headers" ,linux-libre-headers)))
       (native-inputs `(("gambit-c-unstable" ,gambit-c-unstable)
