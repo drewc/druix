@@ -7,6 +7,7 @@
   #:use-module (druix packages scheme gerbil gerbil-crypto)
   #:use-module (druix packages scheme gerbil gerbil-persist)
   #:use-module (druix packages scheme gerbil gerbil-ethereum)
+  #:use-module (gnu packages tls)
   #:use-module (druix utils gerbil-packages))
 
 (define shebang
@@ -27,6 +28,7 @@
    "Glow: language for safe Decentralized Applications (DApps)"
    "https://github.com/fare/gerbil-ethereum" (@ (guix licenses) asl2.0)
    `(("gerbil" ,gerbil-unstable)
+     ("openssl" ,openssl)
      ("gerbil-utils" ,gerbil-utils)
      ("gerbil-poo" ,gerbil-poo)
      ("gerbil-persist" ,gerbil-persist)

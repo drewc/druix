@@ -15,6 +15,7 @@
 (define-module (druix packages scheme gerbil gerbil-utils)
   #:use-module (druix packages scheme gerbil)
   #:use-module (druix utils gerbil-packages)
+  #:use-module (gnu packages tls)
   #:use-module ((guix licenses) #:prefix l:))
 
 (define-public gerbil-utils
@@ -22,7 +23,8 @@
    (@ (druix versions gerbil-utils) latest)
    "Gerbil Clan: Community curated Collection of Common Utilities"
    "https://github.com/fare/gerbil-utils" l:lgpl2.1
-   `(("gerbil" ,gerbil-unstable))
+   `(("gerbil" ,gerbil-unstable)
+     ("openssl" ,openssl))
    #:clan '(#:software-name "Gerbil-utils"
             #:gerbil-package "clan"
             #:version-path "version")))
@@ -117,9 +119,7 @@
 * Gerbil ethereum
 
 #+begin_src scheme
-((@ (druix versions) ensure-druix-versions)
- 'gerbil-ethereum #:repo "https://github.com/fare/gerbil-ethereum.git"
- #:commit "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
+((@ (druix versions) ensure-druix-versions) 'gerbil-ethereum #:repo "https://github.com/fare/gerbil-ethereum.git" #:commit "8e6c1036bdde0d495484bd0d96526405cc1d51a3")
 #+end_src
 
 #+begin_src scheme :tangle ../../druix/packages/scheme/gerbil/gerbil-ethereum.scm
