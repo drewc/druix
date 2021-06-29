@@ -1,0 +1,73 @@
+#+TITLE: JavaScript: It was scheme!
+
+JavaScript is a very important language these days. Packaging a JavaScript app/library is lots of "fun".
+
+* Yarn
+
+#+begin_src shell
+$ guix download https://github.com/yarnpkg/yarn/releases/download/v1.22.5/yarn-v1.22.5.tar.gz
+
+Starting download of /tmp/guix-file.xAemZu
+From https://github.com/yarnpkg/yarn/releases/download/v1.22.5/yarn-v1.22.5.tar.gz...
+following redirection to `https://github-releases.githubusercontent.com/49970642/2377bf00-e81c-11ea-92ab-28a657cb6dd4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20210629%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20210629T190751Z&X-Amz-Expires=300&X-Amz-Signature=35a027334f86066c5846db134d9ba2a3fa9838e0f6c857db959a2049dd71d2dc&X-Amz-SignedHeaders=host&actor_id=0&key_id=0&repo_id=49970642&response-content-disposition=attachment%3B%20filename%3Dyarn-v1.22.5.tar.gz&response-content-type=application%2Foctet-stream'...
+ yarn-v1.22.5.tar.gz  1.2MiB                                                                                                               941KiB/s 00:01 [##################] 100.0%
+/gnu/store/rjjyzrn967fjpmznx7hbh5p7xw5i51nh-yarn-v1.22.5.tar.gz
+0hf15amsn54cbsy4pvqcq2c03d1l11w3799p19sympz4j93gnr66
+
+#+end_src
+
+#+begin_src scheme  :tangle ../druix/packages/javascript/yarn.scm
+(define-module (druix packages javascript yarn)
+  #:use-module (guix packages)
+  #:use-module (guix download)
+  #:use-module (guix build-system trivial)
+  #:use-module (guix licenses)
+  #:use-module (gnu packages node)
+  #:use-module (ice-9 pretty-print))
+
+(define yarn-version "1.22.5")
+
+(define-public yarn
+  (package
+   (name "yarn")
+   (version yarn-version)
+   (source (origin
+             (method url-fetch/tarbomb)
+             (uri (string-append "https://github.com/yarnpkg/yarn/releases/download/v"
+                                 version
+                                 "/yarn-v"
+                                 version
+                                 ".tar.gz"))
+
+             (sha256
+              (base32
+              "0hf15amsn54cbsy4pvqcq2c03d1l11w3799p19sympz4j93gnr66"))))
+   (build-system trivial-build-system)
+   (outputs '("out"))
+   (inputs `(("node" ,node-lts)))
+   (arguments
+    `(#:modules ((guix build utils))
+      #:builder (begin
+   		  (use-modules (guix build utils))
+                  (let* ((out (assoc-ref %outputs "out"))
+			 (bin (string-append  out "/bin"))
+			 (lib (string-append  out "/lib"))
+                         (node-modules (string-append lib "/node_modules"))
+                         (yarn (string-append node-modules "/yarn"))
+                         (input-dir (string-append (assoc-ref %build-inputs "source") "/yarn-v" ,version)))
+
+		    (mkdir-p yarn)
+		    (mkdir-p bin)
+   		    (copy-recursively (string-append input-dir "/") yarn)
+		    (symlink (string-append yarn "/bin/yarn") (string-append bin "/yarn"))
+		    (symlink (string-append yarn "/bin/yarnpkg") (string-append bin "/yarnpkg"))
+		    (delete-file (string-append yarn "/bin/yarn.cmd"))
+		    (delete-file (string-append yarn "/bin/yarnpkg.cmd"))
+   		    ))))
+   (home-page "https://yarnpkg.com/")
+   (synopsis "Dependency management tool for JavaScript")
+   (description "Fast, reliable, and secure dependency management tool
+for JavaScript.  Acts as a drop-in replacement for NodeJS's npm.")
+   (license bsd-2)))
+
+#+end_src
