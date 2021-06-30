@@ -52,19 +52,49 @@ guix pack -RR -S /bin=bin glow-lang
 
 That totally works. Yay!!!!
 
+** Docker
+
 So, let's try a Docker image now.
 
 #+begin_src shell
-guix pack -f docker -S /bin=bin --entry-point=bin/glow gerbil-ethereum glow-lang
+guix pack -f docker -S /bin=bin glow-contacts gerbil-ethereum glow-lang
 #+end_src
 
+Building it eventually outputs a tarball in the store
+
+#+begin_src shell
+DOCKBALL=/gnu/store/8qn1hlg6x5p1pncfxl7bfhrfs6prbkhy-glow-contacts-gerbil-ethereum-glow-lang-docker-pack.tar.gz
+#+end_src
+
+We'll copy it to a more reasonable name.
+
+#+begin_src shell
+DOCKFILE=glow-docker-v0.0.2.tar.gz
+DOCLOC=~/me/MuKn/dist/$DOCKFILE
+cp $DOCKBALL $DOCLOC
+#+end_src
+
+Now we can load it into a ~Docker~ instance!
+
+#+begin_src shell
+docker load < $DOCLOC
+# c76d2ae372e5: Loading layer [==================================================>]   1.27GB/1.27GB
+# Loaded image: glow-contacts-gerbil-ethereum-glow-lang:latest
+#+end_src
+
+The image name it gives us is all important.
+
+#+begin_src shell
+#+end_src
+
+** Squashfs
 And a squashfs image.
 
 #+begin_src shell
 guix pack -f squashfs --entry-point=bin/glow bash glow-lang
 #+end_src
 
-* Docker: coastal, not offshore
+* TODO Docker: coastal, not offshore
 
 As of now, [2021-06-22 Tue], I've not yet made GETH (Ethereum-Go) work under
 ~guix~. Docker is a choice that, while somewhat clunky, does in fact have an image that will run my PET.
@@ -208,6 +238,27 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      (display "GERBIL_LOADPATH=") (write (gerbil-loadpath outputs)) (newline)
      (display "GERBIL_PATH=\"$HOME/.cache/glow/gerbil\"\n")
      (display "export GERBIL_PATH GERBIL_LOADPATH GLOW_SOURCE ORIG_GERBIL_PATH ORIG_GERBIL_LOADPATH\n")
+
+     ;;; Ok, is there a database?
+     (display "GLOW_CONTACTS_DB=\"$HOME/.config/glow/db/contacts.db\"\n")
+     ;;; If not, create one.
+     (display "if [ ! -f \"$GLOW_CONTACTS_DB\" ]; then\n")
+     (display (string-append out "/bin/make-glow-contacts-db \n fi\n"))
+
+     ;;; Now the wwwroot
+     (display "WWWROOT=$HOME/.config/glow/wwwroot\n")
+     ;;;  If it exist and is not a symlink, warn and continue
+     (display (string-append
+               "if [ -d \"$WWWROOT\" -a ! -h \"$WWWROOT\" ];\n then\n"
+               "   echo WARNING $WWWROOT is a directory and not a symlink."
+               "Consider changing it and proceed with caution. \n"
+               "else \n"))
+     ;;; if it is a symlink delete it.
+     (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
+     ;;; ... and finally create the symlink
+     (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
+     
+    
      (display "exec ") (display gerbil) (display "/bin/gxi ") (display out)
      (display "/lib/gerbil/lib/mukn/glow-contacts/main.ss \"$@\"")))
 
@@ -225,6 +276,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      ("smug-gerbil" ,smug-gerbil)
      ("gerbil-crypto" ,gerbil-crypto)
      ("gerbil-ftw" ,gerbil-ftw)
+     ("gloui-spa" ,gloui-spa)
      ("glow-lang", glow-lang))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
@@ -236,17 +288,26 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
        (add-after 'build
            'shebang-glow
          (lambda* (#:key outputs inputs #:allow-other-keys)
-           (let ((out (assoc-ref outputs "out"))
-                 (gerbil (assoc-ref inputs "gerbil")))
+           (let* ((out (assoc-ref outputs "out"))
+                  (gerbil (assoc-ref inputs "gerbil"))
+                  (gloui-spa (assoc-ref inputs "gloui-spa"))
+                  (db (string-append out "/share/glow-contacts/db")))
              (install-file
-              "main.ss" (string-append out "/lib/gerbil/lib/mukn/glow-contacts/") )
-             #;(make-file-writable "glow-contacts")
+              "main.ss"
+              (string-append out "/lib/gerbil/lib/mukn/glow-contacts/"))
              (with-output-to-file "glow-contacts"
                ,shebang)
              (chmod "glow-contacts" #o755)
              (install-file "glow-contacts" (string-append out "/bin"))
              (invoke "echo" "Made a shebang") (newline)
              (invoke "cat" "glow-contacts") (newline)
+             (copy-recursively "db" db)
+             (with-output-to-file "make-glow-contacts-db"
+               (lambda _(display (string-append
+                         "#!/bin/sh\n cd " db "\n"
+                         "./makedb.sh"))))
+             (chmod "make-glow-contacts-db" #o755)
+             (install-file "make-glow-contacts-db" (string-append out "/bin"))
              #t)))))))
 #+end_src
 

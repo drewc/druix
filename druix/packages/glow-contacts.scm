@@ -44,6 +44,27 @@
      (display "GERBIL_LOADPATH=") (write (gerbil-loadpath outputs)) (newline)
      (display "GERBIL_PATH=\"$HOME/.cache/glow/gerbil\"\n")
      (display "export GERBIL_PATH GERBIL_LOADPATH GLOW_SOURCE ORIG_GERBIL_PATH ORIG_GERBIL_LOADPATH\n")
+
+     ;;; Ok, is there a database?
+     (display "GLOW_CONTACTS_DB=\"$HOME/.config/glow/db/contacts.db\"\n")
+     ;;; If not, create one.
+     (display "if [ ! -f \"$GLOW_CONTACTS_DB\" ]; then\n")
+     (display (string-append out "/bin/make-glow-contacts-db \n fi\n"))
+
+     ;;; Now the wwwroot
+     (display "WWWROOT=$HOME/.config/glow/wwwroot\n")
+     ;;;  If it exist and is not a symlink, warn and continue
+     (display (string-append
+               "if [ -d \"$WWWROOT\" -a ! -h \"$WWWROOT\" ];\n then\n"
+               "   echo WARNING $WWWROOT is a directory and not a symlink."
+               "Consider changing it and proceed with caution. \n"
+               "else \n"))
+     ;;; if it is a symlink delete it.
+     (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
+     ;;; ... and finally create the symlink
+     (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
+     
+    
      (display "exec ") (display gerbil) (display "/bin/gxi ") (display out)
      (display "/lib/gerbil/lib/mukn/glow-contacts/main.ss \"$@\"")))
 
@@ -61,6 +82,7 @@
      ("smug-gerbil" ,smug-gerbil)
      ("gerbil-crypto" ,gerbil-crypto)
      ("gerbil-ftw" ,gerbil-ftw)
+     ("gloui-spa" ,gloui-spa)
      ("glow-lang", glow-lang))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
@@ -72,15 +94,24 @@
        (add-after 'build
            'shebang-glow
          (lambda* (#:key outputs inputs #:allow-other-keys)
-           (let ((out (assoc-ref outputs "out"))
-                 (gerbil (assoc-ref inputs "gerbil")))
+           (let* ((out (assoc-ref outputs "out"))
+                  (gerbil (assoc-ref inputs "gerbil"))
+                  (gloui-spa (assoc-ref inputs "gloui-spa"))
+                  (db (string-append out "/share/glow-contacts/db")))
              (install-file
-              "main.ss" (string-append out "/lib/gerbil/lib/mukn/glow-contacts/") )
-             #;(make-file-writable "glow-contacts")
+              "main.ss"
+              (string-append out "/lib/gerbil/lib/mukn/glow-contacts/"))
              (with-output-to-file "glow-contacts"
                ,shebang)
              (chmod "glow-contacts" #o755)
              (install-file "glow-contacts" (string-append out "/bin"))
              (invoke "echo" "Made a shebang") (newline)
              (invoke "cat" "glow-contacts") (newline)
+             (copy-recursively "db" db)
+             (with-output-to-file "make-glow-contacts-db"
+               (lambda _(display (string-append
+                         "#!/bin/sh\n cd " db "\n"
+                         "./makedb.sh"))))
+             (chmod "make-glow-contacts-db" #o755)
+             (install-file "make-glow-contacts-db" (string-append out "/bin"))
              #t)))))))
