@@ -157,6 +157,9 @@ guix package -L ~/me/guix/src/druix/ --list-available='^gambit-c'
 #+end_src
 
 * ~include/stamp.h~
+:PROPERTIES:
+:CUSTOM_ID: stampH
+:END:
 
 Gambit knows its version to output via a ~stamp.h~ file when building.
 

@@ -2,7 +2,92 @@
 
 *Glow* is the entire reason behind my second foray into *Guix*.
 
+* A Standalone ~guix pack~ of Glow
 
+#+begin_quote
+The guix pack command creates a shrink-wrapped pack or software bundle: it
+creates a tarball or some other archive containing the binaries of the software
+you’re interested in, and all its dependencies. The resulting archive can be
+used on any machine that does not have Guix, and people can run the exact same
+binaries as those you have with Guix. The pack itself is created in a
+bit-reproducible fashion, so anyone can verify that it really contains the build
+results that you pretend to be shipping.
+
+-- https://guix.gnu.org/manual/en/html_node/Invoking-guix-pack.html
+#+end_quote
+
+Awesome! It's a good /scheme/ to infiltrate all boxes.
+
+We want a user to be able to run ~glow~ without needing root, so we "...use the
+~--relocatable~ option. This option produces relocatable binaries, meaning they
+they can be placed anywhere in the file system hierarchy".
+
+
+#+begin_quote
+--relocatable
+-R
+
+Produce relocatable binaries—i.e., binaries that can be placed anywhere in the
+file system hierarchy and run from there.
+
+When this option is passed once, the resulting binaries require support for user
+namespaces in the kernel Linux; when passed twice, relocatable binaries fall
+to back to other techniques if user namespaces are unavailable, and essentially
+work anywhere
+
+[...]
+
+Here’s a trick to memorize it: -RR, which adds PRoot support, can be thought of
+as the abbreviation of “Really Relocatable”. Neat, isn’t it?
+
+— https://guix.gnu.org/manual/en/html_node/Invoking-guix-pack.html
+#+end_quote
+
+Works for me! First try.
+
+#+begin_src shell
+guix pack -RR -S /bin=bin glow-lang
+
+#+end_src
+
+That totally works. Yay!!!!
+
+So, let's try a Docker image now.
+
+#+begin_src shell
+guix pack -f docker -S /bin=bin --entry-point=bin/glow gerbil-ethereum glow-lang
+#+end_src
+
+And a squashfs image.
+
+#+begin_src shell
+guix pack -f squashfs --entry-point=bin/glow bash glow-lang
+#+end_src
+
+* Docker: coastal, not offshore
+
+As of now, [2021-06-22 Tue], I've not yet made GETH (Ethereum-Go) work under
+~guix~. Docker is a choice that, while somewhat clunky, does in fact have an image that will run my PET.
+
+#+begin_src shell
+docker pull ethereum/client-go
+#+end_src
+
+Now a script that runs geth.
+
+#+begin_src shell :shebang #!/bin/sh :tangle geth.sh
+exec docker run -it -p 8545:8545 -p 30303:30303 ethereum/client-go "$@"
+#+end_src
+
+#+begin_src shell
+(echo geth --datadir /home/drewc/.local/share/glow/geth --identity GlowPrivateEthereumTestNet --verbosity 4 --miner.etherbase 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC --nodiscover --maxpeers 0 --nousb --networkid 17 --nat any --vmdebug --unlock 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC account import --password /dev/null /tmp/croesus-tmp-egXs5B.prv ; geth --datadir /home/drewc/.local/share/glow/geth --identity GlowPrivateEthereumTestNet --verbosity 4 --miner.etherbase 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC --nodiscover --maxpeers 0 --nousb --networkid 17 --nat any --vmdebug --unlock 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC account import --password /dev/null /tmp/croesus-tmp-egXs5B.prv) < /dev/nul
+l >> /home/drewc/.local/share/glow//log/geth/geth.log 2>&1
+#+end_src
+
+https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d30620ca74/
+
+
+* ~glow-lang~ package
 #+begin_src scheme
 ((@ (druix versions) ensure-druix-versions)
  'glow-lang #:repo "https://gitlab.com/mukn/glow.git")
@@ -39,7 +124,6 @@
    "Glow: language for safe Decentralized Applications (DApps)"
    "https://github.com/fare/gerbil-ethereum" (@ (guix licenses) asl2.0)
    `(("gerbil" ,gerbil-unstable)
-     ("openssl" ,openssl)
      ("gerbil-utils" ,gerbil-utils)
      ("gerbil-poo" ,gerbil-poo)
      ("gerbil-persist" ,gerbil-persist)
@@ -69,5 +153,104 @@
              (invoke "echo" "Made a shebang") (newline)
              (invoke "cat" "glow") (newline)
              #t)))))))
+#+end_src
 
+* ~glow-contacts~ package
+#+begin_src scheme
+((@ (druix versions) ensure-druix-versions)
+ 'glow-contacts #:repo "https://gitlab.com/drewc/glow-contacts.git")
+#+end_src
+
+#+begin_src scheme :tangle ../druix/packages/glow-contacts.scm
+(define-module (druix packages glow-contacts)
+  #:use-module (druix packages scheme gerbil)
+  #:use-module (druix packages scheme gerbil gerbil-utils)
+  #:use-module (druix packages scheme gerbil gerbil-ftw)
+  #:use-module (druix packages scheme gerbil smug-gerbil)
+  #:use-module (druix packages scheme gerbil gerbil-poo)
+  #:use-module (druix packages scheme gerbil gerbil-libp2p)
+  #:use-module (druix packages scheme gerbil gerbil-crypto)
+  #:use-module (druix packages scheme gerbil gerbil-persist)
+  #:use-module (druix packages scheme gerbil gerbil-ethereum)
+  #:use-module (guix download)
+  #:use-module (guix packages)
+  #:use-module (guix build-system copy)
+  #:use-module (gnu packages tls)
+  #:use-module (druix packages glow-lang)
+  #:use-module (druix utils gerbil-packages))
+
+(define-public gloui-spa
+  (package
+    (name "gloui-spa")
+    (version "0.5.0")
+    (synopsis "gloUI, a UI for glow, which is a programming language used to make decentralized applications.")
+    (description synopsis)
+    (home-page "https://github.com/drewc/gloui")
+    (license (@ (guix licenses) expat))
+    (source
+     (origin
+       (method url-fetch/tarbomb)
+       (uri "https://github.com/drewc/gloui/releases/download/v0.5.0/gloui-SPA-0.5.0.tar.gz")
+       (sha256
+        (base32 "0v98qrpqdx89g96c95brr1j9pxi70qin8wjskdamsskm1rl0f9lw"))))
+   (build-system copy-build-system)
+   (arguments
+  `(#:phases
+     (modify-phases %standard-phases
+       (delete 'reset-gzip-timestamps))))))
+
+(define shebang
+  '(lambda _
+     (display "#!/bin/sh\n")
+     (display "ORIG_GERBIL_LOADPATH=\"$GERBIL_LOADPATH\"\n")
+     (display "ORIG_GERBIL_PATH=\"$GERBIL_PATH\"\n")
+     (display "unset GERBIL_HOME\n")
+     (display "GERBIL_LOADPATH=") (write (gerbil-loadpath outputs)) (newline)
+     (display "GERBIL_PATH=\"$HOME/.cache/glow/gerbil\"\n")
+     (display "export GERBIL_PATH GERBIL_LOADPATH GLOW_SOURCE ORIG_GERBIL_PATH ORIG_GERBIL_LOADPATH\n")
+     (display "exec ") (display gerbil) (display "/bin/gxi ") (display out)
+     (display "/lib/gerbil/lib/mukn/glow-contacts/main.ss \"$@\"")))
+
+(define-public glow-contacts
+  (gxpkg/clan
+   (@ (druix versions glow-contacts) latest)
+   "Glow Contacts for Decentralized Applications (DApps)"
+   "https://gitlab.com/drewc/glow-contacts" (@ (guix licenses) asl2.0)
+   `(("gerbil" ,gerbil-unstable)
+     ("gerbil-utils" ,gerbil-utils)
+     ("gerbil-poo" ,gerbil-poo)
+     ("gerbil-persist" ,gerbil-persist)
+     ("gerbil-libp2p" ,gerbil-libp2p)
+     ("gerbil-ethereum" ,gerbil-ethereum)
+     ("smug-gerbil" ,smug-gerbil)
+     ("gerbil-crypto" ,gerbil-crypto)
+     ("gerbil-ftw" ,gerbil-ftw)
+     ("glow-lang", glow-lang))
+   #:clan '(#:software-name "Glow Contacts"
+            #:gerbil-package "mukn/glow-contacts"
+            #:version-path "version")
+   #:arguments
+  `(#:phases
+     (modify-phases %standard-phases
+      ;; (add-before 'copy-source 'patch-glow-install-path)
+       (add-after 'build
+           'shebang-glow
+         (lambda* (#:key outputs inputs #:allow-other-keys)
+           (let ((out (assoc-ref outputs "out"))
+                 (gerbil (assoc-ref inputs "gerbil")))
+             (install-file
+              "main.ss" (string-append out "/lib/gerbil/lib/mukn/glow-contacts/") )
+             #;(make-file-writable "glow-contacts")
+             (with-output-to-file "glow-contacts"
+               ,shebang)
+             (chmod "glow-contacts" #o755)
+             (install-file "glow-contacts" (string-append out "/bin"))
+             (invoke "echo" "Made a shebang") (newline)
+             (invoke "cat" "glow-contacts") (newline)
+             #t)))))))
+#+end_src
+
+* Glow-UI: ~gloui~ and ~glow-contacts~ packages
+
+#+begin_src
 #+end_src
