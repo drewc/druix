@@ -16,7 +16,7 @@
   #:use-module (guix derivations)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages web)
-  #:use-module (gnu packages sqlite)
+  #:use-module (druix packages sql sqlite)
   #:use-module (gnu packages xml)
   #:use-module (gnu packages databases)
   #:use-module (guix store))
