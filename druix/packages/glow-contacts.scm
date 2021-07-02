@@ -11,14 +11,15 @@
   #:use-module (guix download)
   #:use-module (guix packages)
   #:use-module (guix build-system copy)
-  #:use-module (gnu packages tls)
+  #:use-module (gnu packages busybox)
+  #:use-module (gnu packages compression)
   #:use-module (druix packages glow-lang)
   #:use-module (druix utils gerbil-packages))
 
 (define-public gloui-spa
   (package
     (name "gloui-spa")
-    (version "0.5.0")
+    (version "0.5.1")
     (synopsis "gloUI, a UI for glow, which is a programming language used to make decentralized applications.")
     (description synopsis)
     (home-page "https://github.com/drewc/gloui")
@@ -26,9 +27,9 @@
     (source
      (origin
        (method url-fetch/tarbomb)
-       (uri "https://github.com/drewc/gloui/releases/download/v0.5.0/gloui-SPA-0.5.0.tar.gz")
+       (uri "https://github.com/drewc/gloui/releases/download/v0.5.1/gloui-SPA-0.5.1.tar.gz")
        (sha256
-        (base32 "0v98qrpqdx89g96c95brr1j9pxi70qin8wjskdamsskm1rl0f9lw"))))
+        (base32 "0yvkyd6xg9x1pgzxhpyz6v4mrvshainil0w2j7yplqrk65vwjyck"))))
    (build-system copy-build-system)
    (arguments
   `(#:phases
@@ -63,8 +64,8 @@
      (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
      ;;; ... and finally create the symlink
      (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
-     
-    
+
+
      (display "exec ") (display gerbil) (display "/bin/gxi ") (display out)
      (display "/lib/gerbil/lib/mukn/glow-contacts/main.ss \"$@\"")))
 
@@ -83,7 +84,8 @@
      ("gerbil-crypto" ,gerbil-crypto)
      ("gerbil-ftw" ,gerbil-ftw)
      ("gloui-spa" ,gloui-spa)
-     ("glow-lang", glow-lang))
+     ("glow-lang", glow-lang)
+     ("busybox", busybox))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
             #:version-path "version")

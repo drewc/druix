@@ -63,7 +63,7 @@ guix pack -f docker -S /bin=bin glow-contacts gerbil-ethereum glow-lang
 Building it eventually outputs a tarball in the store
 
 #+begin_src shell
-DOCKBALL=/gnu/store/8qn1hlg6x5p1pncfxl7bfhrfs6prbkhy-glow-contacts-gerbil-ethereum-glow-lang-docker-pack.tar.gz
+DOCKBALL=/gnu/store/sxl3c71xfhd90914p1prhhdh28riqwm8-glow-contacts-gerbil-ethereum-glow-lang-docker-pack.tar.gz
 #+end_src
 
 We'll copy it to a more reasonable name.
@@ -186,9 +186,10 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
 #+end_src
 
 * ~glow-contacts~ package
+
 #+begin_src scheme
 ((@ (druix versions) ensure-druix-versions)
- 'glow-contacts #:repo "https://gitlab.com/drewc/glow-contacts.git")
+ 'glow-contacts #:repo "https://gitlab.com/mukn/glow-contacts.git")
 #+end_src
 
 #+begin_src scheme :tangle ../druix/packages/glow-contacts.scm
@@ -205,14 +206,15 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
   #:use-module (guix download)
   #:use-module (guix packages)
   #:use-module (guix build-system copy)
-  #:use-module (gnu packages tls)
+  #:use-module (gnu packages busybox)
+  #:use-module (gnu packages compression)
   #:use-module (druix packages glow-lang)
   #:use-module (druix utils gerbil-packages))
 
 (define-public gloui-spa
   (package
     (name "gloui-spa")
-    (version "0.5.0")
+    (version "0.5.1")
     (synopsis "gloUI, a UI for glow, which is a programming language used to make decentralized applications.")
     (description synopsis)
     (home-page "https://github.com/drewc/gloui")
@@ -220,9 +222,9 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
     (source
      (origin
        (method url-fetch/tarbomb)
-       (uri "https://github.com/drewc/gloui/releases/download/v0.5.0/gloui-SPA-0.5.0.tar.gz")
+       (uri "https://github.com/drewc/gloui/releases/download/v0.5.1/gloui-SPA-0.5.1.tar.gz")
        (sha256
-        (base32 "0v98qrpqdx89g96c95brr1j9pxi70qin8wjskdamsskm1rl0f9lw"))))
+        (base32 "0yvkyd6xg9x1pgzxhpyz6v4mrvshainil0w2j7yplqrk65vwjyck"))))
    (build-system copy-build-system)
    (arguments
   `(#:phases
@@ -257,8 +259,8 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
      ;;; ... and finally create the symlink
      (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
-     
-    
+
+
      (display "exec ") (display gerbil) (display "/bin/gxi ") (display out)
      (display "/lib/gerbil/lib/mukn/glow-contacts/main.ss \"$@\"")))
 
@@ -277,7 +279,8 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      ("gerbil-crypto" ,gerbil-crypto)
      ("gerbil-ftw" ,gerbil-ftw)
      ("gloui-spa" ,gloui-spa)
-     ("glow-lang", glow-lang))
+     ("glow-lang", glow-lang)
+     ("busybox", busybox))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
             #:version-path "version")
@@ -309,9 +312,4 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
              (chmod "make-glow-contacts-db" #o755)
              (install-file "make-glow-contacts-db" (string-append out "/bin"))
              #t)))))))
-#+end_src
-
-* Glow-UI: ~gloui~ and ~glow-contacts~ packages
-
-#+begin_src
 #+end_src

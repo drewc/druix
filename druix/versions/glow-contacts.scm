@@ -9,6 +9,28 @@
       #:minor
       0
       #:patch
+      #f
+      #:revision
+      41
+      #:ymd
+      20210630
+      #:hms
+      213825
+      #:sha256
+      "1xirm163bbhisrgxd9zf9s99sl407wqjvl246i6a6lv8p9s88pmn"
+      #:repo
+      "https://gitlab.com/mukn/glow-contacts.git"
+      #:commit
+      "5c69c97f76d925ce7a408dc1f50fd06fbc7f5638")
+
+    (make <druix-version-git>
+      #:name
+      "glow-contacts"
+      #:major
+      0
+      #:minor
+      0
+      #:patch
       0
       #:revision
       2

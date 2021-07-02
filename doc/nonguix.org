@@ -44,11 +44,8 @@ We've already got a repo for the subtrees.
 #+begin_src shell
 git subtree pull --prefix nonguix ../nonguix/ nonguix --squash
 
-git subtree add --prefix nongnu ../nonguix/ nongnu --squash
-git subtree add --prefix doc/ ../nonguix/ README --squash
+git subtree pull --prefix nongnu ../nonguix/ nongnu --squash
 
-#+end_src
-#+begin_src
 #+end_src
 
 ** In the beginning
