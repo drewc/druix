@@ -1,9 +1,10 @@
 (define-module (druix packages glow)
+  #:use-module (druix packages glow-contacts)
   #:use-module (druix packages scheme gerbil gerbil-ethereum)
   #:use-module (druix packages glow-lang)
-  #:use-module (druix packages glow-contacts)
   #:use-module (gnu packages base)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages sqlite)
   #:use-module (guix packages))
 
 (define-public glow
@@ -15,5 +16,6 @@
     (description "Glow is a programming language used to make decentralized applications, otherwise known as DApps")
     (propagated-inputs `(("bash" , bash)
                          ("coreutils", coreutils-minimal)
+                         ("sqlite", sqlite)
                          ("glow-lang", glow-lang)
                          ("gerbil-ethereum", gerbil-ethereum)))))
