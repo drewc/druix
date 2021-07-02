@@ -11,7 +11,7 @@
   #:use-module (guix download)
   #:use-module (guix packages)
   #:use-module (guix build-system copy)
-  #:use-module (gnu packages busybox)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages compression)
   #:use-module (druix packages glow-lang)
   #:use-module (druix utils gerbil-packages))
@@ -85,7 +85,7 @@
      ("gerbil-ftw" ,gerbil-ftw)
      ("gloui-spa" ,gloui-spa)
      ("glow-lang", glow-lang)
-     ("busybox", busybox))
+     ("coreutils", coreutils-minimal))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
             #:version-path "version")
