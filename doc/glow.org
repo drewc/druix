@@ -2,6 +2,37 @@
 
 *Glow* is the entire reason behind my second foray into *Guix*.
 
+* The ~glow~ package: A distribution/collection
+
+Right now there are multiple packages which we would very much like to distribute at one. This is that.
+
+Right now we simply inherit from ~glow-contacts~ and propagate the inputs we
+desire.
+
+#+begin_src scheme :tangle ../druix/packages/glow.scm
+(define-module (druix packages glow)
+  #:use-module (druix packages glow-contacts)
+  #:use-module (druix packages scheme gerbil gerbil-ethereum)
+  #:use-module (druix packages glow-lang)
+  #:use-module (gnu packages base)
+  #:use-module (gnu packages bash)
+  #:use-module (gnu packages sqlite)
+  #:use-module (guix packages))
+
+(define-public glow
+  (package
+    (inherit glow-contacts)
+    (name "glow")
+    (version "0.0.3")
+    (synopsis "A distribution of Glow, a language for DApps")
+    (description "Glow is a programming language used to make decentralized applications, otherwise known as DApps")
+    (propagated-inputs `(("bash" , bash)
+                         ("coreutils", coreutils-minimal)
+                         ("sqlite", sqlite)
+                         ("glow-lang", glow-lang)
+                         ("gerbil-ethereum", gerbil-ethereum)))))
+#+end_src
+
 * A Standalone ~guix pack~ of Glow
 
 #+begin_quote
@@ -60,18 +91,26 @@ So, let's try a Docker image now.
 guix pack -f docker -S /bin=bin glow-contacts gerbil-ethereum glow-lang
 #+end_src
 
+And another one, this time with an entry point of the ~glow-contacts~ server.
+
+
+#+begin_src shell :noweb-ref docball
+DOCKBALL=$(guix pack -f docker -S /bin=bin --entry-point=/bin/glow-contacts  glow | tail -1)
+#+end_src
+
 Building it eventually outputs a tarball in the store
 
 #+begin_src shell
-DOCKBALL=/gnu/store/sxl3c71xfhd90914p1prhhdh28riqwm8-glow-contacts-gerbil-ethereum-glow-lang-docker-pack.tar.gz
+DOCKBALL=/gnu/store/6yqxfjj4sqxzgraz93mcghg9lb2gvhrf-glow-docker-pack.tar.gz
 #+end_src
 
 We'll copy it to a more reasonable name.
 
-#+begin_src shell
-DOCKFILE=glow-docker-v0.0.2.tar.gz
-DOCLOC=~/me/MuKn/dist/$DOCKFILE
-cp $DOCKBALL $DOCLOC
+#+begin_src shell :noweb-ref docball
+DOCKFILE=glow-docker-v0.0.3.tar.gz
+DOCKLOC=~/me/MuKn/dist/$DOCKFILE
+cp -v $DOCKBALL $DOCKLOC
+chmod u+rw $DOCKLOC
 #+end_src
 
 Now we can load it into a ~Docker~ instance!
@@ -79,14 +118,17 @@ Now we can load it into a ~Docker~ instance!
 #+begin_src shell
 docker load < $DOCLOC
 # c76d2ae372e5: Loading layer [==================================================>]   1.27GB/1.27GB
-# Loaded image: glow-contacts-gerbil-ethereum-glow-lang:latest
+# Loaded image: glow:latest
 #+end_src
 
-The image name it gives us is all important.
+The image name it gives us is all important. That, as it turns out, is what docker calls the repository and the version
 
 #+begin_src shell
 #+end_src
 
+#+begin_src shell :tangle docball.sh :shebang "#!/bin/sh" :noweb yes
+<<docball>>
+#+end_src
 ** Squashfs
 And a squashfs image.
 
@@ -206,7 +248,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
   #:use-module (guix download)
   #:use-module (guix packages)
   #:use-module (guix build-system copy)
-  #:use-module (gnu packages busybox)
+  #:use-module (gnu packages base)
   #:use-module (gnu packages compression)
   #:use-module (druix packages glow-lang)
   #:use-module (druix utils gerbil-packages))
@@ -224,7 +266,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
        (method url-fetch/tarbomb)
        (uri "https://github.com/drewc/gloui/releases/download/v0.5.1/gloui-SPA-0.5.1.tar.gz")
        (sha256
-        (base32 "0yvkyd6xg9x1pgzxhpyz6v4mrvshainil0w2j7yplqrk65vwjyck"))))
+        (base32 "1i3ad9vk01p7qnr0j8al2nawnrynkpm53vs9i8rcc34vbglkn059"))))
    (build-system copy-build-system)
    (arguments
   `(#:phases
@@ -245,6 +287,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      (display "GLOW_CONTACTS_DB=\"$HOME/.config/glow/db/contacts.db\"\n")
      ;;; If not, create one.
      (display "if [ ! -f \"$GLOW_CONTACTS_DB\" ]; then\n")
+     (display "mkdir -p $(dirname \"$GLOW_CONTACTS_DB\")\n")
      (display (string-append out "/bin/make-glow-contacts-db \n fi\n"))
 
      ;;; Now the wwwroot
@@ -258,6 +301,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      ;;; if it is a symlink delete it.
      (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
      ;;; ... and finally create the symlink
+     (display "mkdir -p $(dirname \"$WWWROOT\")\n")
      (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
 
 
@@ -280,7 +324,7 @@ https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d306
      ("gerbil-ftw" ,gerbil-ftw)
      ("gloui-spa" ,gloui-spa)
      ("glow-lang", glow-lang)
-     ("busybox", busybox))
+     ("coreutils", coreutils-minimal))
    #:clan '(#:software-name "Glow Contacts"
             #:gerbil-package "mukn/glow-contacts"
             #:version-path "version")

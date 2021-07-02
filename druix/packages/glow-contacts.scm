@@ -29,7 +29,7 @@
        (method url-fetch/tarbomb)
        (uri "https://github.com/drewc/gloui/releases/download/v0.5.1/gloui-SPA-0.5.1.tar.gz")
        (sha256
-        (base32 "0yvkyd6xg9x1pgzxhpyz6v4mrvshainil0w2j7yplqrk65vwjyck"))))
+        (base32 "1i3ad9vk01p7qnr0j8al2nawnrynkpm53vs9i8rcc34vbglkn059"))))
    (build-system copy-build-system)
    (arguments
   `(#:phases
@@ -50,6 +50,7 @@
      (display "GLOW_CONTACTS_DB=\"$HOME/.config/glow/db/contacts.db\"\n")
      ;;; If not, create one.
      (display "if [ ! -f \"$GLOW_CONTACTS_DB\" ]; then\n")
+     (display "mkdir -p $(dirname \"$GLOW_CONTACTS_DB\")\n")
      (display (string-append out "/bin/make-glow-contacts-db \n fi\n"))
 
      ;;; Now the wwwroot
@@ -63,6 +64,7 @@
      ;;; if it is a symlink delete it.
      (display "  [[ -h \"$WWWROOT\" ]] && rm $WWWROOT;\n")
      ;;; ... and finally create the symlink
+     (display "mkdir -p $(dirname \"$WWWROOT\")\n")
      (display (string-append "ln -s " gloui-spa " \"$WWWROOT\" ; \n fi \n"))
 
 
