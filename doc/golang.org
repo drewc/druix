@@ -91,7 +91,7 @@ And a simple way to make a package.
           #:key
           (home-page (home-page<-import-path ip))
           (description synopsis)
-          (license l:expat)
+          (license license:expat)
           (inputs '())
           (phases '%standard-phases)
           (unpack-path #f))
@@ -133,7 +133,7 @@ Packages need to be exported in order for ~guix install~ to pick them up.
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
   #:use-module (gnu packages golang)
-  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system go)
   #:use-module (guix git-download)
   #:export
@@ -211,7 +211,14 @@ To make it simple we'll print a form that we copy/paste.
 (pgpd "github.com/influxdata/flux/"
       "Flux is a lightweight scripting language for querying databases")
 
+(pgpd "github.com/cncf/xds/go"
+      ""
+      #:up "github.com/cncf/xds")
 
+(pgpd "github.com/cncf/udpa/go"
+      "Universal Data Plane API Working Group (UDPA-WG)"
+      #:up "github.com/cncf/udpa"
+      )
 (pgpd "github.com/apache/arrow/go/arrow/array"
       "Apache Arrow go array"
       #:up "github.com/apache/arrow/")
@@ -219,6 +226,10 @@ To make it simple we'll print a form that we copy/paste.
 (pgpd "github.com/apache/arrow/go/arrow"
       "Apache Arrow go array"
       #:up "github.com/apache/arrow/")
+
+(pgpd "github.com/antihax/optional"
+      "optional parameters for go")
+
 
 #+end_src
 
@@ -321,6 +332,18 @@ To make it simple we'll print a form that we copy/paste.
 
 ;; go-github-com-apache-arrow-go-arrow
 ((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/apache/arrow/go/arrow" #:unpack-path "github.com/apache/arrow")
+
+
+;; go-github-com-cncf-udpa-go
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/cncf/udpa/go" #:unpack-path "github.com/cncf/udpa")
+
+
+;; go-github-com-cncf-xds-go
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/cncf/xds/go" #:unpack-path "github.com/cncf/xds")
+
+
+;; go-github-com-antihax-optional
+((@ (druix utils go-packages) ensure-go-druix-versions) "github.com/antihax/optional")
 #+end_src
 
 #+begin_src scheme :tangle ../druix/packages/golang.scm
@@ -333,7 +356,7 @@ To make it simple we'll print a form that we copy/paste.
   #:use-module (gnu packages syncthing)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system go)
-  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix git-download)
   #:re-export
   (go
@@ -359,7 +382,7 @@ To make it simple we'll print a form that we copy/paste.
  (define-public-go-package
   "github.com/deckarep/golang-set"
   "A simple set type for the Go language."
-  #:description "A simple set type for the Go language. Trusted by Docker, 1Password, Ethereum and Hashicorp.")
+  #:description "A simple set type for the Go language. Trusted by Docker, 1Pass        word, Ethereum and Hashicorp.")
 
 ;;
 (define-public-go-package
@@ -400,36 +423,42 @@ To make it simple we'll print a form that we copy/paste.
 ;; ;; go-github-com-golang-protobuf
 ;; (define-public-go-package "github.com/golang/protobuf"
 ;;   "Go support for Protocol Buffers")
-
-(define-public go-github-com-golang-protobuf-protoc-gen-go-descriptor
+#;(define-public go-github-com-golang-protobuf
   (package
-    (name "go-github-com-golang-protobuf-protoc-gen-go-descriptor")
-    (version "1.3.1")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                     (url "https://github.com/golang/protobuf")
-                     (commit (string-append "v" version))))
-              (file-name (git-file-name name version))
-              (sha256
-               (base32
-                "15am4s4646qy6iv0g3kkqq52rzykqjhm4bf08dk0fy2r58knpsyl"))))
+    (name "go-github-com-golang-protobuf")
+    (version "1.5.2")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/golang/protobuf")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1mh5fyim42dn821nsd3afnmgscrzzhn3h8rag635d2jnr23r1zhk"))))
     (build-system go-build-system)
     (arguments
-     '(#:import-path "github.com/golang/protobuf/protoc-gen-go/descriptor"
-       #:unpack-path "github.com/golang/protobuf"
-       ;; Requires unpackaged golang.org/x/sync/errgroup
-       #:tests? #f))
-    (synopsis "Go support for Protocol Buffers")
-    (description "This package provides Go support for the Protocol Buffers
-data serialization format.")
+      '(#:import-path "github.com/golang/protobuf"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-github-com-google-go-cmp"
+         ,go-github-com-google-go-cmp)))
     (home-page "https://github.com/golang/protobuf")
-    (license l:bsd-3)))
+    (synopsis "Go support for Protocol Buffers")
+    (description
+      "This module
+(@url{https://pkg.go.dev/mod/github.com/golang/protobuf,(code github.com/golang/protobuf)})
+contains Go bindings for protocol buffers.")
+    (license license:bsd-3)))
+
+
 
 
 ;; go-github-com-gorilla-websocket
 (define-public-go-package "github.com/gorilla/websocket"
-  "A fast, well-tested and widely used WebSocket implementation for Go.")
+  "A fast, well-tested and widely used  WebSocket implementation for Go.")
 
 ;; go-github-com-opentracing-opentracing-go
 (define-public-go-package "github.com/opentracing/opentracing-go" "OpenTracing API for Go"
@@ -437,7 +466,7 @@ data serialization format.")
 
 ;; go-github-com-graph-gophers-graphql-go
 (define-public-go-package "github.com/graph-gophers/graphql-go"
-  "GraphQL server with a focus on ease of use"
+  "GraphQL with a focus on ease of use"
   #:inputs `(("go-github-com-opentracing-opentracing-go"
              ,go-github-com-opentracing-opentracing-go))
   #:phases '(modify-phases %standard-phases (delete 'check)))
@@ -477,7 +506,7 @@ data serialization format.")
 ;;   #:inputs `(("go-github-com-influxdata-influxdb-v2-kit-platform"
 ;;              ,go-github-com-influxdata-influxdb-v2-kit-platform)))
 
-(define-public go-google-golang-org-protobuf
+#;(define-public go-google-golang-org-protobuf
   (package
     (name "go-google-golang-org-protobuf")
     (version "1.27.1")
@@ -503,16 +532,592 @@ data serialization format.")
     (synopsis "Go support for Protocol Buffers")
     (description
       "This project hosts the Go implementation for
-@url{https://developers.google.com/protocol-buffers,protocol buffers}, which is a
+@url{https://developers.google.com/protocol-buffers,protocol buffers},                  which is a
 language-neutral, platform-neutral, extensible mechanism for serializing
 structured data.  The protocol buffer language is a language for specifying the
 schema for structured data.  This schema is compiled into language specific
 bindings.  This project provides both a tool to generate Go code for the
 protocol buffer language, and also the runtime implementation to handle
 serialization of messages in Go.  See the
-@url{https://developers.google.com/protocol-buffers/docs/overview,protocol buffer developer guide}
+@url{https://developers.google.com/protocol-buffers/docs/overvie                        w,protocol buffer developer guide}
 for more information about protocol buffers themselves.")
-    (license l:bsd-3)))
+    (license license:bsd-3)))
+
+
+;; go-github-com-cncf-udpa-go
+(define-public-go-package
+  "github.com/cncf/udpa/go"
+  "Universal Data Plane API                                                             Working Group (UDPA-                        WG)")
+
+;; go-github-com-cncf-xds-go
+(define-public-go-package "github.com/cncf/xds/go" "")
+
+
+;; go-github-com-antihax-optional
+(define-public-go-package "github.com/antihax/optional"
+  "optional parameters for go")
+
+#;(define-public go-github-com-census-instrumentation-opencensus-proto
+  (package
+    (name "go-github-com-census-instrumentation-opencensus-proto")
+    (version "0.3.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/census-instrumentation/opencensus-proto")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1ngp6jb345xahsijjwlcy2giymyzsy7kdhkrvgjafqssk6aw6f"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path
+        "github.com/census-instrumentation/opencensus-proto"))
+    (home-page
+      "https://github.com/census-instrumentation/opencensus-proto")
+    (synopsis
+      "OpenCensus Proto - Language Independent Interface Types For OpenCensus")
+    (description
+      "Census provides a frame                                                          work to define and collect stats against metrics and to
+break those stats do                                                                    wn across user-defined dimensions.")
+    (license license:asl2.0)))
+
+#;(define-public go-github-com-lyft-protoc-gen-star
+  (package
+    (name "go-github-com-lyft-protoc-gen-star")
+    (version "0.5.3")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/lyft/protoc-gen-star")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0xzwh1q27c22ja7ixnsal838f638jxljb5hs1z1rn6dxb87wxkz9"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/lyft/protoc-gen-star"))
+    (propagated-inputs
+      `(("go-github-com-stretchr-testify"
+         ,go-github-com-stretchr-testify)
+        ("go-github-com-spf13-afero"
+         ,go-github-com-spf13-afero)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)))
+    (home-page
+      "https://github.com/lyft/protoc-gen-star")
+    (synopsis "protoc-gen-star (PG*)")
+    (description
+      "Package pgs provides a library for building protoc plugins ")
+    (license license:asl2.0)))
+
+#;(define-public go-github-com-iancoleman-strcase
+  (package
+    (name "go-github-com-iancoleman-strcase")
+    (version "0.1.3")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/iancoleman/strcase")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0pfflbx0crybli2j3wx6hvbsm6pgd2hibvcnlgzbiqnspd39ykf7"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/iancoleman/strcase"))
+    (home-page
+      "https://github.com/iancoleman/strcase")
+    (synopsis "strcase")
+    (description
+      "Package strcase converts strings to various cases.  See the conversion table below:
+")
+    (license license:expat)))
+
+#;(define-public guo-github-com-grpc-ecosystem-grpc-gateway
+  (package
+    (name "go-github-com-grpc-ecosystem-grpc-gate                                       way")
+    (version "1.16.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/grpc-ecosystem/grpc-gate                        way")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0dzq1qbgzz2c6vnh8anx0j3py34sd72p35x6s2wrl001q68am5cc"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path
+        "github.com/grpc-ecosystem/grpc-gate                                            way"))
+    (propagated-inputs
+      `(("go-gopkg-in-yaml-v2" ,go-gopkg-in-yaml-v2)
+        ("go-google-golang-org-grpc"
+         ,go-google-golang-org-grpc)
+        ("go-google-golang-org-genproto"
+         ,go-google-golang-org-genproto)
+        ("go-golang-org-x-xerrors"
+         ,go-golang-org-x-xerrors)
+        ("go-golang-org-x-oauth2"
+         ,go-golang-org-x-oauth2)
+        ("go-golang-org-x-net" ,go-golang-org-x-net)
+        ("go-github-com-rogpeppe-fastuuid"
+         ,go-github-com-rogpeppe-fastuuid)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)
+        ("go-github-com-golang-glog"
+         ,go-github-com-golang-glog)
+        ("go-github-com-ghodss-yaml"
+         ,go-github-com-ghodss-yaml)
+        ("go-github-com-antihax-optional"
+         ,go-github-com-antihax-optional)))
+    (home-page
+      "https://github.com/grpc-ecosystem/grpc-gate                                      way")
+    (synopsis "grpc-gate                                                                way")
+    (description
+      "The grpc-gate                                                                    way is a plugin of the Google protocol buffers compiler
+@url{https://github.com/protocolbuffers/protobuf,protoc}.
+It reads protobuf service definitions and generates a reverse-proxy server              which
+translates a RESTful HTTP API into gRPC.  This server is generated according to the
+@url{https://github.com/googleapis/googleapis/ra                                        w/master/google/api/http.proto#L46,(code google.api.http)}
+annotations in your service definitions.")
+    (license license:bsd-3)))
+
+#;(define-public go-github-com-rogpeppe-fastuuid
+  (package
+    (name "go-github-com-rogpeppe-fastuuid")
+    (version "1.2.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/rogpeppe/fastuuid")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "028acdg63zkxpjz3l639nlhki2l0canr2v5jglrmwa1wpjqcfff8"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/rogpeppe/fastuuid"))
+    (home-page
+      "https://github.com/rogpeppe/fastuuid")
+    (synopsis "fastuuid")
+    (description
+      "Package fastuuid provides fast UUID generation of 192 bit
+universally unique identifiers.
+")
+    (license license:bsd-3)))
+
+#;(define-public go-github-com-ghodss-yaml
+  (package
+    (name "go-github-com-ghodss-yaml")
+    (version "1.0.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/ghodss/yaml")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0skwmimpy7hlh7pva2slpcplnm912rp3igs98xnqmn859kwa5v8g"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/ghodss/yaml"))
+    (home-page "https://github.com/ghodss/yaml")
+    (synopsis
+      "YAML marshaling and unmarshaling support for Go")
+    (description
+      "Copyright 2013 The Go Authors.  All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+")
+    (license license:expat)))
+
+(define-public go-google-golang-org-genproto
+  (package
+    (name "go-google-golang-org-genproto")
+    (version "0.0.0-20210701191553-46259e63a0a9")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/googleapis/go-genproto")
+               (commit (go-version->git-ref version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0z60xi1qc0cqzia5rpilb0v2qnkzbx50sfp6cjc9zmdip9jdysya"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "google.golang.org/genproto"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-google-golang-org-grpc"
+         ,go-google-golang-org-grpc)
+        ("go-golang-org-x-tools" ,go-golang-org-x-tools)
+        ("go-golang-org-x-text" ,go-golang-org-x-text)
+        ("go-golang-org-x-lint" ,go-golang-org-x-lint)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)))
+    (home-page "https://google.golang.org/genproto")
+    (synopsis "Go generated proto packages")
+    (description
+      "This repository contains the generated Go packages for common protocol buffer
+types, and the generated @url{http://grpc.io,gRPC} code necessary for interacting       with Google's gRPC
+APIs.")
+    (license license:asl2.0)))
+
+(define-public go-github-com-pierrec-lz4-v4
+  (package
+    (name "go-github-com-pierrec-lz4-v4")
+    (version "4.1.8")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/pierrec/lz4")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1ffsm2ny2v6nasc3zww5f2bl0jqi2jmiyqm8x2cvyzrd0clay1wl"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/pierrec/lz4"))
+    (home-page "https://github.com/pierrec/lz4")
+    (synopsis "lz4 : LZ4 compression in pure Go")
+    (description
+      "Package lz4 implements reading writing lz4 compressed data.
+")
+    (license license:bsd-3)))
+
+(define-public go-github-com-klauspost-compress
+  (package
+    (name "go-github-com-klauspost-compress")
+    (version "1.13.1")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/klauspost/compress")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0ydnf9rizlhm8rilh14674qqx272sbwbkjx06xn9pqvy6mmn2r3r"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/klauspost/compress"))
+    (propagated-inputs
+      `(("go-github-com-golang-snappy"
+         ,go-github-com-golang-snappy)))
+    (home-page
+      "https://github.com/klauspost/compress")
+    (synopsis "compress")
+    (description
+      "This package provides various compression algorithms.")
+    (license license:bsd-3)))
+
+(define-public go-github-com-google-go-cmp
+  (package
+    (name "go-github-com-google-go-cmp")
+    (version "0.5.6")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/google/go-cmp")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0lrb0pacv5iy3m6fn1qb3nv7zwimfhpzqq8f6hwpwx88cx3g6p1s"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/google/go-cmp"))
+    (propagated-inputs
+      `(("go-golang-org-x-xerrors"
+         ,go-golang-org-x-xerrors)))
+    (home-page "https://github.com/google/go-cmp")
+    (synopsis "Package for equality of Go values")
+    (description
+      "This package is intended to be a more powerful and safer alternative to
+@code{reflect.DeepEqual} for comparing whether two values are semantically equal.")
+    (license license:bsd-3)))
+
+(define-public go-github-com-google-flatbuffers
+  (package
+    (name "go-github-com-google-flatbuffers")
+    (version "1.11.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/google/flatbuffers")
+               (commit (go-version->git-ref version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0kl19ss9pdn10iiql7rlz4xcaf3dr5irn8g0zbz4l5362bsh91xx"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/google/flatbuffers/go"
+        #:unpack-path "github.com/google/flatbuffers"))
+    (home-page
+      "https://github.com/google/flatbuffers")
+    (synopsis "FlatBuffers")
+    (description
+      "@strong{FlatBuffers} is a cross platform serialization library architected for
+maximum memory efficiency.  It allo                                                     ws you to directly access serialized data   without parsing/unpacking it first, while still having great forwards/backwards compatibility.")
+    (license license:asl2.0)))
+
+#;(define-public go-github-com-golang-protobuf
+  (package
+    (name "go-github-com-golang-protobuf")
+    (version "1.5.2")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/golang/protobuf")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1mh5fyim42dn821nsd3afnmgscrzzhn3h8rag635d2jnr23r1zhk"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/golang/protobuf"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-github-com-google-go-cmp"
+         ,go-github-com-google-go-cmp)))
+    (home-page "https://github.com/golang/protobuf")
+    (synopsis "Go support for Protocol Buffers")
+    (description
+      "This module
+(@url{https://pkg.go.dev/mod/github.com/golang/protobuf,(code github.com/golang/protobuf)})
+contains Go bindings for protocol buffers.")
+    (license license:bsd-3)))
+
+#;(define-public go-go-opentelemetry-io-proto-otlp
+  (package
+    (name "go-go-opentelemetry-io-proto-otlp")
+    (version "0.9.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/open-telemetry/opentelemetry-proto-go")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "0f6iix9szi76x4hvia9c97yfmx0xqi29mhnn7vradk3xbhcaih9d"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "go.opentelemetry.io/proto/otlp"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-google-golang-org-grpc"
+         ,go-google-golang-org-grpc)
+        ("go-github-com-grpc-ecosystem-grpc-gateway"
+         ,go-github-com-grpc-ecosystem-grpc-gateway)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)))
+    (home-page
+      "https://go.opentelemetry.io/proto/otlp")
+    (synopsis #f)
+    (description #f)
+    (license license:asl2.0)))
+
+ #;(define-public go-github-com-envoyproxy-protoc-gen-validate
+  (package
+    (name "go-github-com-envoyproxy-protoc-gen-validate")
+    (version "0.6.1")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/envoyproxy/protoc-gen-validate")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "15x8klwl98kh81la8j007jfcsx9jxmxrrmys3a7p92pf0k5vzrx"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path
+        "github.com/envoyproxy/protoc-gen-validate"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-golang-org-x-tools" ,go-golang-org-x-tools)
+        ("go-golang-org-x-net" ,go-golang-org-x-net)
+        ("go-golang-org-x-lint" ,go-golang-org-x-lint)
+        ("go-github-com-spf13-afero"
+         ,go-github-com-spf13-afero)
+        ("go-github-com-lyft-protoc-gen-star"
+         ,go-github-com-lyft-protoc-gen-star)
+        ("go-github-com-iancoleman-strcase"
+         ,go-github-com-iancoleman-strcase)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)))
+    (home-page
+      "https://github.com/envoyproxy/protoc-gen-validate")
+    (synopsis "protoc-gen-validate (PGV)")
+    (description
+      "PGV is a protoc plugin to generate polyglot message validators.                  While protocol buffers effectively guarantee the types of structured data, they cannot enforce semantic rules for values.  This plugin adds support to protoc-generated code to validate such constraints.")
+    (license license:asl2.0)))
+
+
+
+#;(define-public go-go-opentelemetry-io-otel
+  (package
+    (name "go-go-opentelemetry-io-otel")
+    (version "0.20.0")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/open-telemetry/opentelemetry-go")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "09crv3i3dnascqrgvx                                                         wgdnkyjajhy0l51siz1q                        w9ib9sv1645gpi"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "go.opentelemetry.io/otel"))
+    (propagated-inputs
+      `(("go-github-com-stretchr-testify"
+         ,go-github-com-stretchr-testify)
+        ("go-github-com-google-go-cmp"
+         ,go-github-com-google-go-cmp)))
+    (home-page "https://go.opentelemetry.io/otel")
+    (synopsis "OpenTelemetry-Go")
+    (description
+      "Package otel provides global access to the OpenTelemetry API.  The subpackages of
+the otel package provide an implementation of the OpenTelemetry API.
+")
+    (license license:asl2.0)))
+
+
+#;(define-public go-github-com-golang-glog
+  (package
+    (name "go-github-com-golang-glog")
+    (version "0.0.0-20210429001901-424d2337a529")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+               (url "https://github.com/golang/glog")
+               (commit (go-version->git-ref version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1hnbln6h61ik9z92dspybmb0cxpddm1c4dzx5g64jr8cdvqcgpji"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path "github.com/golang/glog"))
+    (home-page "https://github.com/golang/glog")
+    (synopsis "glog")
+    (description
+      "Package glog implements logging analogous to the Google-internal C++ INFO/ERROR/V setup.
+It provides functions Info,                                                             Warning, Error, Fatal, plus formatting variants such as
+Infof.  It also provides V-style logging controlled by the -v and -vmodule=file=2 flags.
+")
+    (license license:asl2.0)))
+
+#;(define-public go-github-com-envoyproxy-go-control-plane
+  (package
+    (name "go-github-com-envoyproxy-go-control-plane")
+    (version "0.9.9")
+    (source
+      (origin
+        (method git-fetch)
+        (uri (git-reference
+
+               (url "https://github.com/envoyproxy/go-control-plane")
+               (commit (string-append "v" version))))
+        (file-name (git-file-name name version))
+        (sha256
+          (base32
+            "1cb3s6x2jx93cdljb9jwp2wc2iljv91h7706gq1amkkwdhdxhcdv"))))
+    (build-system go-build-system)
+    (arguments
+      '(#:import-path
+        "github.com/envoyproxy/go-control-plane"))
+    (propagated-inputs
+      `(("go-google-golang-org-protobuf"
+         ,go-google-golang-org-protobuf)
+        ("go-google-golang-org-grpc"
+         ,go-google-golang-org-grpc)
+        ("go-google-golang-org-genproto"
+         ,go-google-golang-org-genproto)
+        ("go-go-opentelemetry-io-proto-otlp"
+         ,go-go-opentelemetry-io-proto-otlp)
+        ("go-github-com-stretchr-testify"
+         ,go-github-com-stretchr-testify)
+        ("go-github-com-prometheus-client-model"
+         ,go-github-com-prometheus-client-model)
+        ("go-github-com-google-go-cmp"
+         ,go-github-com-google-go-cmp)
+        ("go-github-com-golang-protobuf"
+         ,go-github-com-golang-protobuf)
+        ("go-github-com-envoyproxy-protoc-gen-validate"
+         ,go-github-com-envoyproxy-protoc-gen-validate)
+        ("go-github-com-cncf-xds-go"
+         ,go-github-com-cncf-xds-go)
+        ("go-github-com-census-instrumentation-opencensus-proto"
+         ,go-github-com-census-instrumentation-opencensus-proto)))
+    (home-page
+      "https://github.com/envoyproxy/go-control-plane")
+    (synopsis "control-plane")
+    (description
+      "This repository contains a Go-based implementation of an API server that
+implements the discovery service APIs defined in
+@url{https://github.com/envoyproxy/data-plane-api,data-plane-api}.")
+    (license license:asl2.0)))
+
+(define-public go-github-com-golang-protobuf-protoc-gen-go-descriptor
+  (package
+    (name "go-github-com-golang-protobuf-protoc-gen-go-descriptor")
+    (version "1.3.1")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://github.com/golang/protobuf")
+                     (commit (string-append "v" version))))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "15am4s4646qy6iv0g3kkqq52rzykqjhm4bf08dk0fy2r58knpsyl"))))
+    (build-system go-build-system)
+    (arguments
+     '(#:import-path "github.com/golang/protobuf/protoc-gen-go/descriptor"
+       #:unpack-path "github.com/golang/protobuf"
+       ;; Requires unpackaged golang.org/x/sync/errgroup
+       #:tests? #f))
+    (synopsis "Go support for Protocol Buffers")
+    (description "This package provides Go support for the Protocol Buffers
+data serialization format.")
+    (home-page "https://github.com/golang/protobuf")
+    (license license:bsd-3)))
 
 (define-public go-google-golang-org-grpc
   (package
@@ -556,250 +1161,7 @@ for more information about protocol buffers themselves.")
     (synopsis "gRPC-Go")
 (description
       "Package grpc implements an RPC system called gRPC.")
-    (license l:asl2.0)))
-(define-public go-google-golang-org-genproto
-  (package
-    (name "go-google-golang-org-genproto")
-    (version "0.0.0-20210701191553-46259e63a0a9")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/googleapis/go-genproto")
-               (commit (go-version->git-ref version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "0z60xi1qc0cqzia5rpilb0v2qnkzbx50sfp6cjc9zmdip9jdysya"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "google.golang.org/genproto"))
-    (propagated-inputs
-      `(("go-google-golang-org-protobuf"
-         ,go-google-golang-org-protobuf)
-        ("go-google-golang-org-grpc"
-         ,go-google-golang-org-grpc)
-        ("go-golang-org-x-tools" ,go-golang-org-x-tools)
-        ("go-golang-org-x-text" ,go-golang-org-x-text)
-        ("go-golang-org-x-lint" ,go-golang-org-x-lint)
-        ("go-github-com-golang-protobuf"
-         ,go-github-com-golang-protobuf)))
-    (home-page "https://google.golang.org/genproto")
-    (synopsis "Go generated proto packages")
-    (description
-      "This repository contains the generated Go packages for common protocol buffer
-types, and the generated @url{http://grpc.io,gRPC} code necessary for interacting with Google's gRPC
-APIs.")
-    (license l:asl2.0)))
-
-(define-public go-github-com-pierrec-lz4-v4
-  (package
-    (name "go-github-com-pierrec-lz4-v4")
-    (version "4.1.8")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/pierrec/lz4")
-               (commit (string-append "v" version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "1ffsm2ny2v6nasc3zww5f2bl0jqi2jmiyqm8x2cvyzrd0clay1wl"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/pierrec/lz4"))
-    (home-page "https://github.com/pierrec/lz4")
-    (synopsis "lz4 : LZ4 compression in pure Go")
-    (description
-      "Package lz4 implements reading and writing lz4 compressed data.
-")
-    (license l:bsd-3)))
-(define-public go-github-com-klauspost-compress
-  (package
-    (name "go-github-com-klauspost-compress")
-    (version "1.13.1")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/klauspost/compress")
-               (commit (string-append "v" version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "0ydnf9rizlhm8rilh14674qqx272sbwbkjx06xn9pqvy6mmn2r3r"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/klauspost/compress"))
-    (propagated-inputs
-      `(("go-github-com-golang-snappy"
-         ,go-github-com-golang-snappy)))
-    (home-page
-      "https://github.com/klauspost/compress")
-    (synopsis "compress")
-    (description
-      "This package provides various compression algorithms.")
-    (license l:bsd-3)))
-
-(define-public go-github-com-google-go-cmp
-  (package
-    (name "go-github-com-google-go-cmp")
-    (version "0.5.6")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/google/go-cmp")
-               (commit (string-append "v" version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "0lrb0pacv5iy3m6fn1qb3nv7zwimfhpzqq8f6hwpwx88cx3g6p1s"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/google/go-cmp"))
-    (propagated-inputs
-      `(("go-golang-org-x-xerrors"
-         ,go-golang-org-x-xerrors)))
-    (home-page "https://github.com/google/go-cmp")
-    (synopsis "Package for equality of Go values")
-    (description
-      "This package is intended to be a more powerful and safer alternative to
-@code{reflect.DeepEqual} for comparing whether two values are semantically equal.")
-    (license l:bsd-3)))
-
-(define-public go-github-com-google-flatbuffers
-  (package
-    (name "go-github-com-google-flatbuffers")
-    (version "2.0.0+incompatible")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/google/flatbuffers")
-               (commit (go-version->git-ref version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "1zbf6bdpps8369r1ql00irxrp58jnalycc8jcapb8iqg654vlfz8"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/google/flatbuffers"))
-    (home-page
-      "https://github.com/google/flatbuffers")
-    (synopsis "FlatBuffers")
-    (description
-      "@strong{FlatBuffers} is a cross platform serialization library architected for
-maximum memory efficiency.  It allows you to directly access serialized data without parsing/unpacking it first, while still having great forwards/backwards compatibility.")
-    (license l:asl2.0)))
-
-(define-public go-github-com-golang-protobuf
-  (package
-    (name "go-github-com-golang-protobuf")
-    (version "1.5.2")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/golang/protobuf")
-               (commit (string-append "v" version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "1mh5fyim42dn821nsd3afnmgscrzzhn3h8rag635d2jnr23r1zhk"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/golang/protobuf"))
-    (propagated-inputs
-      `(("go-google-golang-org-protobuf"
-         ,go-google-golang-org-protobuf)
-        ("go-github-com-google-go-cmp"
-         ,go-github-com-google-go-cmp)))
-    (home-page "https://github.com/golang/protobuf")
-    (synopsis "Go support for Protocol Buffers")
-    (description
-      "This module
-(@url{https://pkg.go.dev/mod/github.com/golang/protobuf,(code github.com/golang/protobuf)})
-contains Go bindings for protocol buffers.")
-    (license l:bsd-3)))
-
-(define-public go-github-com-golang-glog
-  (package
-    (name "go-github-com-golang-glog")
-    (version "0.0.0-20210429001901-424d2337a529")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/golang/glog")
-               (commit (go-version->git-ref version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "1hnbln6h61ik9z92dspybmb0cxpddm1c4dzx5g64jr8cdvqcgpji"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path "github.com/golang/glog"))
-    (home-page "https://github.com/golang/glog")
-    (synopsis "glog")
-    (description
-      "Package glog implements logging analogous to the Google-internal C++ INFO/ERROR/V setup.
-It provides functions Info, Warning, Error, Fatal, plus formatting variants such as
-Infof.  It also provides V-style logging controlled by the -v and -vmodule=file=2 flags.
-")
-    (license l:asl2.0)))
-
-(define-public go-github-com-envoyproxy-go-control-plane
-  (package
-    (name "go-github-com-envoyproxy-go-control-plane")
-    (version "0.9.9")
-    (source
-      (origin
-        (method git-fetch)
-        (uri (git-reference
-               (url "https://github.com/envoyproxy/go-control-plane")
-               (commit (string-append "v" version))))
-        (file-name (git-file-name name version))
-        (sha256
-          (base32
-            "1cb3s6x2jx93cdljb9jwp2wc2iljv91h7706gq1amkkwdhdxhcdv"))))
-    (build-system go-build-system)
-    (arguments
-      '(#:import-path
-        "github.com/envoyproxy/go-control-plane"))
-    (propagated-inputs
-      `(("go-google-golang-org-protobuf"
-         ,go-google-golang-org-protobuf)
-        ("go-google-golang-org-grpc"
-         ,go-google-golang-org-grpc)
-        ("go-google-golang-org-genproto"
-         ,go-google-golang-org-genproto)
-        ("go-go-opentelemetry-io-proto-otlp"
-         ,go-go-opentelemetry-io-proto-otlp)
-        ("go-github-com-stretchr-testify"
-         ,go-github-com-stretchr-testify)
-        ("go-github-com-prometheus-client-model"
-         ,go-github-com-prometheus-client-model)
-        ("go-github-com-google-go-cmp"
-         ,go-github-com-google-go-cmp)
-        ("go-github-com-golang-protobuf"
-         ,go-github-com-golang-protobuf)
-        ("go-github-com-envoyproxy-protoc-gen-validate"
-         ,go-github-com-envoyproxy-protoc-gen-validate)
-        ("go-github-com-cncf-xds-go"
-         ,go-github-com-cncf-xds-go)
-        ("go-github-com-census-instrumentation-opencensus-proto"
-         ,go-github-com-census-instrumentation-opencensus-proto)))
-    (home-page
-      "https://github.com/envoyproxy/go-control-plane")
-    (synopsis "control-plane")
-    (description
-      "This repository contains a Go-based implementation of an API server that
-implements the discovery service APIs defined in
-@url{https://github.com/envoyproxy/data-plane-api,data-plane-api}.")
-    (license l:asl2.0)))
-
+    (license license:asl2.0)))
 (define-public go-github-com-apache-arrow-go-arrow
   (package
     (name "go-github-com-apache-arrow-go-arrow")
@@ -816,8 +1178,8 @@ implements the discovery service APIs defined in
     (arguments
      '(#:import-path "github.com/apache/arrow"))
     (propagated-inputs
-     `(("go-google-golang-org-protobuf"
-        ,go-google-golang-org-protobuf)
+     `(#;("go-google-golang-org-protobuf-proto"
+        ,go-google-golang-org-protobuf-proto)
        ("go-google-golang-org-grpc"
         ,go-google-golang-org-grpc)
        ("go-google-golang-org-genproto"
@@ -849,7 +1211,7 @@ implements the discovery service APIs defined in
      "Package arrow provides an implementation of Apache Arrow.\n")
     (description
      "Package arrow provides an implementation of Apache Arrow.\n")
-    (license l:asl2.0)))
+    (license license:asl2.0)))
 
 #;(define-public-go-package "github.com/apache/arrow"
   "Apache Arrow go"

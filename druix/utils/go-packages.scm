@@ -3,7 +3,7 @@
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
   #:use-module (gnu packages golang)
-  #:use-module ((guix licenses) #:prefix l:)
+  #:use-module ((guix licenses) #:prefix license:)
   #:use-module (guix build-system go)
   #:use-module (guix git-download)
   #:export
@@ -33,7 +33,7 @@
           #:key
           (home-page (home-page<-import-path ip))
           (description synopsis)
-          (license l:expat)
+          (license license:expat)
           (inputs '())
           (phases '%standard-phases)
           (unpack-path #f))
