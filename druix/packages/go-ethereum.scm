@@ -1,5 +1,4 @@
 (define-module (druix packages go-ethereum)
-  #:use-module (druix packages golang)
   #:use-module (druix utils)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)

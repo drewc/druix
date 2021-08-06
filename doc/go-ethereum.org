@@ -88,7 +88,7 @@ make geth
 #+end_src
 
 
-** Library Tarball
+* Library Tarball
 
 Ok! Let's make a tarball and release it.
 
@@ -141,7 +141,6 @@ Now a package
 
 #+begin_src scheme :tangle ../druix/packages/go-ethereum.scm :noweb yes
 (define-module (druix packages go-ethereum)
-  #:use-module (druix packages golang)
   #:use-module (druix utils)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
