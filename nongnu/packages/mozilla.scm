@@ -15,9 +15,10 @@
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2019, 2020 Adrian Malacoda <malacoda@monarch-pass.net>
 ;;; Copyright (C) 2019, 2020 Adrian Malacoda <malacoda@monarch-pass.net>
-;;; Copyright © 2020 Jonathan Brielmaier <jonathan.brielmaier@web.de>
+;;; Copyright © 2020, 2021 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2020 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2021 pineapples <guixuser6392@protonmail.com>
+;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
 ;;;
 ;;; This file is not part of GNU Guix.
 ;;;
@@ -64,6 +65,7 @@
   #:use-module (gnu packages libevent)
   #:use-module (gnu packages libffi)
   #:use-module (gnu packages libreoffice) ;for hunspell
+  #:use-module (gnu packages linux)
   #:use-module (gnu packages llvm)
   #:use-module (gnu packages m4)
   #:use-module (gnu packages node)
@@ -81,19 +83,19 @@
 
 ;; Update this id with every firefox update to it's release date.
 ;; It's used for cache validation and therefor can lead to strange bugs.
-(define %firefox-build-id "20210601000000")
+(define %firefox-build-id "20210722000000")
 
 (define-public firefox
   (package
     (name "firefox")
-    (version "89.0")
+    (version "90.0.2")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://archive.mozilla.org/pub/firefox/releases/"
                            version "/source/firefox-" version ".source.tar.xz"))
        (sha256
-        (base32 "02m9w3igb1higxnqp318r41khf936jm6szw4bcd0amb4g7axfhyv"))))
+        (base32 "0ngzqd0cijxibcspmx1k2c5gylccl3vzxcx6vbjmkgd746y5vi1m"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -287,6 +289,7 @@
                             (string-append (assoc-ref inputs x)
                                            "/lib"))
                           '("pulseaudio" "mesa"
+                            "udev"      ;; For U2F and WebAuthn
                             ;; For the integration of native notifications
                             "libnotify")))
                     (gtk-share (string-append (assoc-ref inputs "gtk+")
@@ -371,6 +374,7 @@
        ("pulseaudio" ,pulseaudio)
        ("startup-notification" ,startup-notification)
        ("sqlite" ,sqlite)
+       ("udev" ,eudev)
        ("unzip" ,unzip)
        ("zip" ,zip)
        ("zlib" ,zlib)))
@@ -420,7 +424,7 @@ the official icon and the name \"firefox\".")
             (call-with-output-file exe
               (lambda (port)
                 (format port "#!~a
- MOZ_ENABLE_WAYLAND=1 exec ~a $@"
+MOZ_ENABLE_WAYLAND=1 exec ~a $@\n"
                         (string-append bash "/bin/bash")
                         (string-append firefox "/bin/firefox"))))
             (chmod exe #o555)

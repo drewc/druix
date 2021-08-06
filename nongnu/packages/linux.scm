@@ -5,6 +5,7 @@
 ;;; Copyright © 2020, 2021 James Smith <jsubuntuxp@disroot.org>
 ;;; Copyright © 2020, 2021 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2021 Mathieu Othacehe <m.othacehe@gmail.com>
+;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -56,42 +57,42 @@
      "The unmodified Linux kernel, including nonfree blobs, for running Guix
 System on hardware which requires nonfree software to function.")))
 
-(define-public linux-5.12
-  (corrupt-linux linux-libre-5.12 "5.12.9"
-                 "0vg71h8r90fl01a8khyf1776y76rgqisxafky89cswa2fpsvxyn7"))
+(define-public linux-5.13
+  (corrupt-linux linux-libre-5.13 "5.13.8"
+                 "0a54r71mcyqvq7c8kff817vh6zfj0bdzmp6ql4az84wq9nwc526h"))
 
 (define-public linux-5.10
-  (corrupt-linux linux-libre-5.10 "5.10.42"
-                 "1r86v6q7ml7zv001f25w3h667nqqy39439s94vnqsyyn7g3jg84b"))
+  (corrupt-linux linux-libre-5.10 "5.10.56"
+                 "0szcj0lbs33wmphxzvcc8jzfdvzncgxy2q8b1s4l9yjhkighssjd"))
 
 (define-public linux-5.4
-  (corrupt-linux linux-libre-5.4 "5.4.124"
-                 "10kxa1ng9w9xd2d5xh48fbhp1kri650p90nihrcpnb845gd9vwpp"))
+  (corrupt-linux linux-libre-5.4 "5.4.138"
+                 "0mw6k9zrcmv1j4b3han5c0q8xbh38bka2wkkbl1y3ralg9r5ffd4"))
 
 (define-public linux-4.19
-  (corrupt-linux linux-libre-4.19 "4.19.193"
-                 "17ci49ak5iw01kfkn3fcgncg9hm4j188417bxi3bnsq9il5ymhl4"))
+  (corrupt-linux linux-libre-4.19 "4.19.201"
+                 "1l6ww5igjv6r2zl1zyq7mzsmpc884p7hpds7l9jfwil232kxydc2"))
 
 (define-public linux-4.14
-  (corrupt-linux linux-libre-4.14 "4.14.235"
-                 "03k793hj294zf7jncs1h8zh5dh6xagkfvnydd9jadxvq2z8vvl8f"))
+  (corrupt-linux linux-libre-4.14 "4.14.242"
+                 "0p0s9hd8ks25a2fndzw36rqflw3xbcb3cq8sldlfj8jdli11qg9y"))
 
 (define-public linux-4.9
-  (corrupt-linux linux-libre-4.9 "4.9.271"
-                 "1480miixphkf0b8w00m753ar7yp1rnl3zyr9wp4inngi2f90553r"))
+  (corrupt-linux linux-libre-4.9 "4.9.278"
+                 "04byav6cbga3jqkppygm5zj73d9v44xyvx6hbrhwr22lsk282dz7"))
 
 (define-public linux-4.4
-  (corrupt-linux linux-libre-4.4 "4.4.271"
-                 "0n5h2lv1p542a45pas3pi0vkhgrk096vwrps79a7v3a6c1q2dxx6"))
+  (corrupt-linux linux-libre-4.4 "4.4.278"
+                 "1r2sbxn8finzcg72ds5dyh4578vv2s5zwylq3b3xyw3hzr4swn4f"))
 
-(define-public linux linux-5.12)
+(define-public linux linux-5.13)
 ;; linux-lts points to the *newest* released long-term support version.
 (define-public linux-lts linux-5.10)
 
 (define-public linux-firmware
   (package
     (name "linux-firmware")
-    (version "20210511")
+    (version "20210716")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://git.kernel.org/pub/scm/linux/kernel"
@@ -99,7 +100,7 @@ System on hardware which requires nonfree software to function.")))
                                   "linux-firmware-" version ".tar.gz"))
               (sha256
                (base32
-                "1i0ikbs0s9djq6jqg557j8wqw3vjspqh9249c0g93qkmayhycf2c"))))
+                "0pzspkq1gs5mjiblagapz1czcgb5j77l124ywa5cxzg7ddxfhvyc"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
@@ -382,10 +383,10 @@ WLAN.TF.2.1-00021-QCARMSWP-1 (ath10k/QCA9377/hw1.0/firmware-6.bin)
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
              (let* ((out (assoc-ref outputs "out"))
-                    (fw-dir (string-append out "/lib/firmware")))
+                    (fw-dir (string-append out "/lib/firmware/intel")))
                (for-each (lambda (file)
                            (install-file file fw-dir))
-                         (find-files "." "ibt-hw-.*\\.bseq$"))
+                         (find-files "intel" "ibt-.*\\.(bseq|ddc|sfi)$"))
                #t)))
          (delete 'validate-runpath))))
     (home-page "http://www.intel.com/support/wireless/wlan/sb/CS-016675.htm")
@@ -535,6 +536,41 @@ package contains nonfree firmware for the following chips:
 
 (define-public rtl-bt-firmware
   (deprecated-package "rtl-bt-firmware" realtek-firmware))
+
+(define-public rtl8192eu-linux-module
+  (let ((commit "cdf1b06b7bff49042f42d0294610d3f3780ee62b")
+        (revision "1"))
+    (package
+      (name "rtl8192eu-linux-module")
+      (version (git-version "0.0.0" revision commit))
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/clnhub/rtl8192eu-linux")
+               (commit commit)))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32
+           "1afscxmjmapvm8hcd0blp1fn5lxg92rhpiqkgj89x53shfsp12d6"))))
+      (build-system linux-module-build-system)
+      (arguments
+       `(#:make-flags
+         (list "CC=gcc"
+               (string-append "KSRC="
+                              (assoc-ref %build-inputs "linux-module-builder")
+                              "/lib/modules/build"))
+         #:phases
+         (modify-phases %standard-phases
+           (replace 'build
+             (lambda* (#:key (make-flags '()) #:allow-other-keys)
+               (apply invoke "make" make-flags))))
+         #:tests? #f))                  ; no test suite
+      (home-page "https://github.com/clnhub/rtl8192eu-linux")
+      (synopsis "Linux driver for Realtek RTL8192EU wireless network adapters")
+      (description "This is Realtek's RTL8192EU Linux driver for wireless
+network adapters.")
+      (license gpl2))))
 
 (define broadcom-sta-version "6.30.223.271")
 
@@ -728,7 +764,7 @@ chipsets from Broadcom:
 (define-public intel-microcode
   (package
     (name "intel-microcode")
-    (version "20210216")
+    (version "20210608")
     (source
      (origin
        (method git-fetch)
@@ -739,7 +775,7 @@ chipsets from Broadcom:
              (commit (string-append "microcode-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "17wrfp7h7xbvncgm1fp103zkyz9n1f820jy6yca1aq208264hjkv"))))
+        (base32 "08nk353z2lcqsjbm2qdsfapfgrvlfw0rj7r9scr9pllzkjj5n9x3"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
