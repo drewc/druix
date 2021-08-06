@@ -1,5 +1,297 @@
 #+TITLE: Druix Cookbook: recipes both tested and in progress
 
+* Running Druix on a Linode Server
+
+As luck would have it I already use [[https://www.linode.com/][Linode]] and have installed a few different
+OS's on that platform so this is fairly easy. I already have an ssh key that I
+use like a [[#catSSH][cat.]]
+
+Also, more luck, Guix outlines it [[http://guix.gnu.org/en/cookbook/en/html_node/Running-Guix-on-a-Linode-Server.html][in detail.]]
+
+We'll follow along and log the progress.
+
+ 1) Create new *Debian* Server
+
+ 2) Power down and resize the *Debian N Disk* under the "Storage" tab.
+
+    It says down to 30GB. I'll just pick that, or rather 30000 MB, as reading
+    ahead says we'll soon delete the whole disk. Yay!
+
+ 3) Create new *Druix* disk using [ Add a Disk ].
+
+    - label :: Druix
+    - filesystem :: ext4
+    - size :: total remaining.
+
+ 4) Under the "Configurations" tab add the *Druix* disk as ~/dev/sdc~.
+
+ 5) Now [ Add Configuration ] for our new box.
+
+    - label :: Druix
+    - kernel :: GRUB 2
+    - /dev/sda  :: Druix
+    - /dev/sdb  :: swap
+    - root :: ~/dev/sda~
+    - Filesystem/Boot Helpers :: Turn them all off
+
+
+ That's the hardware setup done!
+
+** Boot into Debian and install Guix
+
+Power back up making sure the *Debian* configuration is still selected. This can
+be done using the 'Boot' link.
+
+Now under the "Network" tab you can see the IP address. Log in via ~ssh root@<ip
+address here>~.
+
+Awesome! That means we can use the [[https://guix.gnu.org/manual/en/html_node/Binary-Installation.html#Binary-Installation][Binary Installation]] instructions.
+
+#+begin_src shell
+sudo apt-get install update
+sudo apt-get install -y gpg
+wget https://sv.gnu.org/people/viewgpg.php?user_id=15145 -qO - | gpg --import -
+wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
+chmod +x guix-install.sh
+./guix-install.sh
+#+end_src
+
+When that is installed pull the latest.
+
+#+begin_src shell
+guix pull
+#+end_src
+
+
+*** Copy Public SSH key
+:PROPERTIES:
+:CUSTOM_ID: catSSH
+:END:
+
+This is simply so we can log in/out of the server.
+
+On my local thinkpad I ~cat~ the key in order to add it to linode.
+
+#+begin_src shell
+cat ~/.ssh/id_rsa.pub
+#=> ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCmBiFgKf6vECxsYDEiNVUde+y3+shyHmc4xGO/hmxKSremUXzQadwr02F3/YiwU0eiQ0Y8Mty09SQ0Ghi1wZHohVJSatSl9IspGjJHxQFZEuF5Gk3m900MGu4VO7VA29oFiJyCEEXSqsPvm4YA9pcSk+K6uwhnwVQghWMtKgXcY9FmAQ2CUdNBXaaVOvNYN7vcUzEjFANGefjwMw6HjUKcT6N5XuDfMpcSwc8ERpgx3Y5fuU4dibbm0RkOpAEmE1iemlJf5oiUI2i/DhJLQJpMEl0Hd1Oo9yEg9lXWoVu6XRhbpB3mGoe+RrLnfilDV8gSai7/rbzgE9xRyw9iVQ8bDptQabTR2ysHNocCkb10dAB4nb4VeTWDV8WIN8uU/GCi9T9jAds2pwRWVYC2HIE9FlgNk3gHKUlnELRGrttihkb9S2bh63rVs8RF8Xb3OhkpAAJIUeGeB49P2r5SiipoVUCFt+omO/ATLKd15gpCcmoByWgM/ATgtfU2uNz+468= drewc@nyx
+#+end_src
+
+Also we want the key on the debian config. While its ~guix pull~'ing we can
+~scp~ it on over.
+
+#+begin_src shell
+scp ~/.ssh/id_rsa.pub root@$DEBIAN_IP:drewc_rsa.pub
+#=> id_rsa.pub 100%  563     6.4KB/s   00:00
+#+end_src
+
+*** Create the ~druix-config.scm~ file.
+
+If you're not me you should likely change the username and timezone. Then copy
+that file over to the debian server.
+
+#+begin_src shell
+scp ~/me/guix/src/druix/doc/cookbook/druix-config.scm root@$DEBIAN_IP:
+#+end_src
+
+Here it is.
+#+begin_src scheme :tangle "cookbook/druix-config.scm"
+(use-modules (gnu)
+             (guix modules))
+(use-service-modules networking
+                     ssh)
+(use-package-modules admin
+                     certs
+                     package-management
+                     ssh
+                     tls)
+
+(operating-system
+  (host-name "druix-pub")
+  (timezone "America/Vancouver")
+  (locale "en_CA.UTF-8")
+  ;; This goofy code will generate the grub.cfg
+  ;; without installing the grub bootloader on disk.
+  (bootloader (bootloader-configuration
+               (bootloader
+                (bootloader
+                 (inherit grub-bootloader)
+                 (installer #~(const #true))))))
+  (file-systems (cons (file-system
+                        (device "/dev/sda")
+                        (mount-point "/")
+                        (type "ext4"))
+                      %base-file-systems))
+
+
+  (swap-devices (list "/dev/sdb"))
+
+
+  (initrd-modules (cons "virtio_scsi"    ; Needed to find the disk
+                        %base-initrd-modules))
+
+  (users (cons (user-account
+                (name "drewc")
+                (group "users")
+                ;; Adding the account to the "wheel" group
+                ;; makes it a sudoer.
+                (supplementary-groups '("wheel"))
+                (home-directory "/home/drewc"))
+               %base-user-accounts))
+
+  (packages (cons* nss-certs            ;for HTTPS access
+                   openssh-sans-x
+                   %base-packages))
+
+  (services (cons*
+             (service dhcp-client-service-type)
+             (service openssh-service-type
+                      (openssh-configuration
+                       (openssh openssh-sans-x)
+                       (password-authentication? #false)
+                       (authorized-keys
+                        `(("drewc" ,(local-file "drewc_rsa.pub"))
+                          ("root" ,(local-file "drewc_rsa.pub"))))))
+             %base-services)))
+#+end_src
+
+*** On the debian server give install a go!
+
+Now ~ssh~ on over to the server and process the installation.
+
+#+begin_src shell
+ssh root@$DEBIAN_IP
+#+end_src
+
+1) Mount the Druix disk
+   #+begin_src shell
+mkdir /mnt/druix
+mount /dev/sdc /mnt/druix
+   #+end_src
+
+2) Copy the ~grub~ stuff
+   #+begin_src shell
+mkdir -p /mnt/druix/boot/grub
+cp -r /boot/grub/* /mnt/druix/boot/grub/
+   #+end_src
+
+3) Initialize the *Guix* installation
+#+begin_src shell
+guix system init druix-config.scm /mnt/druix
+#+end_src
+
+
+*** Reboot into Druix Machine
+
+Remove the host keys and ~ssh~ in, setting some passwords along the way. I was
+unable to ssh in as root.
+
+#+begin_src shell
+ssh-keygen -R $DEBIAN_IP
+ssh drewc@$DEBIAN_IP
+su
+passwd # for root y3
+passwd drewc # for the user f0
+exit
+#+end_src
+
+*** Copy the ~.scm~ and ~.pub~ over to the new box.
+
+#+begin_src shell
+ssh drewc@$DEBIAN_IP mkdir druix
+scp ~/.ssh/id_rsa.pub drewc@$DEBIAN_IP:/home/drewc/druix/drewc_rsa.pub
+scp ~/me/guix/src/druix/doc/cookbook/druix-config.scm drewc@$DEBIAN_IP:
+#+end_src
+
+*** Add ~druix~ to the channels and pull
+
+#+begin_src shell
+cd /tmp/
+CHANF=`mktemp`
+cat > $CHANF <<'EOF'
+(cons*
+  (channel
+    (name 'druix)
+    (url "https://github.com/drewc/druix.git")
+    (branch "main"))
+ %default-channels)
+EOF
+
+scp $CHANF drewc@$DEBIAN_IP:druix/channels.scm
+ssh -t drewc@$DEBIAN_IP sudo cp druix/channels.scm /etc/guix
+ssh -t drewc@$DEBIAN_IP sudo chmod a+r /etc/guix/channels.scm
+ssh -t drewc@$DEBIAN_IP guix pull
+ssh -t drewc@$DEBIAN_IP sudo --login guix pull -v10 -K
+
+
+#+end_src
+
+*** First Imagize
+
+We want to store it as an image to make other boxes with.
+
+First, ~gc~ the unused packages.
+
+#+begin_src shell
+ssh -t drewc@$DEBIAN_IP guix gc
+#+end_src
+
+Now click on the [... Imagize] button and make an image! We now have druix on linode as an image.
+
+*** Now Delete and Resize
+
+Now we can delete our Debian disk and resize our Druix disk to full size.
+
+So in "Storage" .
+
+ - Debian N :: [ ... delete]
+ - Druix :: [ ... resize]
+   I have 81408 MB
+
+*** Startup and demo!
+
+Here are packages that only exist in druix.
+
+#+begin_src shell
+ssh -t drewc@$DEBIAN_IP guix install glow-lang gerbil-unstable gambit-c-unstable go-ethereum gerbil-ethereum
+
+
+# The following packages will be installed:
+#    gambit-c-unstable 4.9.3-1427-g46618e76
+#    gerbil-unstable   0.16-192-gfa9537be
+#    glow-lang         0.1.0-182-ged0bd72d
+#    go-ethereum       1.10.6
+#    gerbil-ethereum 0.0-285-gbb6dc2c6
+#+end_src
+
+It takes forever to build the kernel. We need it for non-free.
+
+Let's try building it.
+
+#+begin_src shell
+guix build linux linux-firmware
+#+end_src
+
+It works!!
+
+** Conclusion
+
+That was easy enough and telling of how to install *Guix SD* with a different grub.
+
+Next is making a package cache, aka `guix publish`
+
+
+
+
+
+
+
+
+
+
+
+
+
 * Polkit
 :PROPERTIES:
 :CUSTOM_ID: polkit
