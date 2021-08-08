@@ -1,5 +1,130 @@
 #+TITLE: Druix Cookbook: recipes both tested and in progress
 
+* Publish Druix, share the store!
+
+"The purpose of ~guix publish~ is to enable users to easily share their store with others, who can then use it as a substitute server"
+--https://guix.gnu.org/manual/en/html_node/Invoking-guix-publish.html
+
+I want to compile things away from my main workstation and have them shared. This is the key to that.
+
+
+** Keypair
+
+*Guix* is nice and secure and thus things need signatures that verify their upcomance.
+
+As luck would have it we automagically have ours as they are autogened at first run of our Guix SD systems. Otherwise, ~guix archive --generate-key~.
+
+See [[https://guix.gnu.org/manual/en/html_node/Invoking-guix-archive.html][Invoking guix archive]].
+
+** First try: At terminal
+
+Inside ~tmux~ we simply run it.
+
+#+begin_src shell
+sudo guix publish --user=drewc
+# guix publish: publishing /gnu/store on 0.0.0.0, port 8080
+# guix publish: using 'gzip' compression method, level 3
+#+end_src
+
+** On another box: Authorize it
+
+I've made the ~guix.drewc.ca~ DNS address for that server.
+
+#+begin_src shell
+wget -O - http://guix.drewc.ca:8080/signing-key.pub > ~/druix/druix-key.pub
+#+end_src
+
+Then we add that to our config.scm
+
+#+begin_src scheme
+(modify-services %base-services
+  (guix-service-type config =>
+                     (guix-configuration
+                      (inherit config)
+                      (substitute-urls
+                       (append (list "http://guix.drewc.ca:8080/")
+                               %default-substitute-urls))
+                      (authorized-keys
+                       (append (list (local-file "./druix-key.pub"))
+                               %default-authorized-guix-keys)))))
+#+end_src
+
+And make it so!
+
+#+begin_src shell
+sudo guix system reconfigure ~/druix/druix-config.scm
+sudo herd restart guix-daemon
+#+end_src
+
+*** The conf file
+#+begin_src scheme :tangle "cookbook/druix-config.scm.publish"
+(use-modules (gnu)
+             (guix modules))
+(use-service-modules networking
+                     ssh)
+(use-package-modules admin
+                     certs
+                     package-management
+                     ssh
+                     tls)
+
+(operating-system
+  (host-name "druix-pub")
+  (timezone "America/Vancouver")
+  (locale "en_CA.UTF-8")
+  ;; This goofy code will generate the grub.cfg
+  ;; without installing the grub bootloader on disk.
+  (bootloader (bootloader-configuration
+               (bootloader
+                (bootloader
+                 (inherit grub-bootloader)
+                 (installer #~(const #true))))))
+  (file-systems (cons (file-system
+                        (device "/dev/sda")
+                        (mount-point "/")
+                        (type "ext4"))
+                      %base-file-systems))
+  (swap-devices (list "/dev/sdb"))
+
+
+  (initrd-modules (cons "virtio_scsi"    ; Needed to find the disk
+                        %base-initrd-modules))
+
+  (users (cons (user-account
+                (name "drewc")
+                (group "users")
+                ;; Adding the account to the "wheel" group
+                ;; makes it a sudoer.
+                (supplementary-groups '("wheel"))
+                (home-directory "/home/drewc"))
+               %base-user-accounts))
+
+  (packages (cons* nss-certs            ;for HTTPS access
+                   openssh-sans-x
+                   %base-packages))
+
+  (services (cons*
+             (service dhcp-client-service-type)
+             (service openssh-service-type
+                      (openssh-configuration
+                       (openssh openssh-sans-x)
+                       (password-authentication? #false)
+                       (authorized-keys
+                        `(("drewc" ,(local-file "./drewc_rsa.pub"))
+                          ("root" ,(local-file "./drewc_rsa.pub"))))))
+             (modify-services %base-services
+               (guix-service-type config =>
+                                  (guix-configuration
+                                   (inherit config)
+                                   (substitute-urls
+                                    (append (list "http://guix.drewc.ca:8080/")
+                                            %default-substitute-urls))
+                                   (authorized-keys
+                                    (append (list (local-file "./druix-key.pub"))
+                                            %default-authorized-guix-keys))))))))
+#+end_src
+
+
 * Running Druix on a Linode Server
 
 As luck would have it I already use [[https://www.linode.com/][Linode]] and have installed a few different
@@ -95,7 +220,7 @@ scp ~/me/guix/src/druix/doc/cookbook/druix-config.scm root@$DEBIAN_IP:
 #+end_src
 
 Here it is.
-#+begin_src scheme :tangle "cookbook/druix-config.scm"
+#+begin_src scheme :tangle "cookbook/druix-config.scm.file"
 (use-modules (gnu)
              (guix modules))
 (use-service-modules networking
@@ -292,7 +417,7 @@ Next is making a package cache, aka `guix publish`
 
 
 
-* Polkit
+* Polkit: Permissions for things.
 :PROPERTIES:
 :CUSTOM_ID: polkit
 :END:
