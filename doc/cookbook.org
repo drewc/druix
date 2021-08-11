@@ -1,5 +1,62 @@
 #+TITLE: Druix Cookbook: recipes both tested and in progress
 
+
+* Run Nix on top of DruixSD
+
+For many things we need nix working. For now. So, let's do it!
+
+As luck would have it, as for many things, there is an existing service.
+
+[[https://guix.gnu.org/manual/en/html_node/Miscellaneous-Services.html#Nix-service][The Nix Service]].
+
+The ~(gnu services nix)~ module provides ~nix-service-type~.
+
+#+begin_src scheme
+(use-modules (gnu))
+(use-service-modules nix)
+(use-package-modules package-management)
+
+(operating-system
+  ;; …
+  (packages (append (list nix)
+                    %base-packages))
+
+  (services (append (list (service nix-service-type))
+                    %base-services)))
+
+#+end_src
+
+Then ~sudo guix system reconfigure~ and configure Nix for your user.
+
+ 1) Add a Nix channel and update it.
+      #+begin_src shell
+nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+nix-channel --update
+# => unpacking channels...
+#    created 1 symlinks in user environment
+      #+end_src
+
+ 2) Create a symlink to your new nix profile and activate it.
+
+#+begin_src shell
+ln -s "/nix/var/nix/profiles/per-user/$USER/profile" ~/.nix-profile
+source /run/current-system/profile/etc/profile.d/nix.sh
+#+end_src
+
+** Run "Google Chrome" or "Vivaldi" from Nix
+
+#+begin_src shell
+guix install fontconfig gs-fonts
+sudo mkdir /etc/fonts
+sudo ln -s /home/drewc/.guix-profile/etc/fonts/fonts.conf /etc/fonts
+
+nix-env -iA nixpkgs.vivaldi nixpkgs.vivaldi-ffmpeg-codecs nixpkgs.vivaldi-widevine
+
+export FONTCONFIG_PATH="~/.guix-profile/etc/fonts/fonts.conf"
+vivaldi &
+#+end_src
+
+
 * Publish Druix, share the store!
 
 "The purpose of ~guix publish~ is to enable users to easily share their store with others, who can then use it as a substitute server"
