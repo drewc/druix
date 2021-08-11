@@ -47,13 +47,20 @@ source /run/current-system/profile/etc/profile.d/nix.sh
 
 #+begin_src shell
 guix install fontconfig gs-fonts
-sudo mkdir /etc/fonts
-sudo ln -s /home/drewc/.guix-profile/etc/fonts/fonts.conf /etc/fonts
 
 nix-env -iA nixpkgs.vivaldi nixpkgs.vivaldi-ffmpeg-codecs nixpkgs.vivaldi-widevine
 
 export FONTCONFIG_PATH="~/.guix-profile/etc/fonts/fonts.conf"
 vivaldi &
+#+end_src
+
+Here's a shebang to make it work wonders:
+
+#+begin_src shell
+#!/usr/bin/env bash
+source /run/current-system/profile/etc/profile.d/nix.sh
+export FONTCONFIG_FILE="/home/$USER/.guix-profile/etc/fonts/fonts.conf"
+vivaldi $@
 #+end_src
 
 
