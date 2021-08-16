@@ -26,13 +26,14 @@
     (name "gambit-c-bootstrap")
     (version "4.9.3")
     (arguments
-     '(#:phases
+     `(#:phases
        (modify-phases %standard-phases
          ;; Let's copy over the configured source JIT
          (add-before 'build 'copy-source
            (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out")))
-               (copy-recursively "." out))
+             (let* ((out (assoc-ref outputs "out"))
+                    (share (string-append out "/share/" ,name "/" ,version)))
+               (copy-recursively "." share))
              #t))
          ;; and make bootstrap
          (replace 'build
@@ -42,8 +43,9 @@
          (delete 'check)
          (replace 'install
            (lambda* (#:key outputs #:allow-other-keys)
-             (let* ((out (assoc-ref outputs "out")))
-               (copy-recursively "." out))
+             (let* ((out (assoc-ref outputs "out"))
+                    (share (string-append out "/share/" ,name "/" ,version)))
+               (copy-recursively "." share))
              #t)))))))
 (define (gambit-c-configure-flags v)
  (let* ((ver (v:druix-version v))
@@ -78,11 +80,16 @@
          (delete 'install)
          (replace 'build
            (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
-             (let ((bootroot (assoc-ref inputs "boot"))
+             (let ((bootroot
+                    (string-append
+                     (assoc-ref inputs "gambit-c-bootstrap")
+                     "/share/gambit-c-bootstrap/4.9.3"))
                    (bsh (string-append
                          (assoc-ref (or native-inputs inputs) "bash")
                          "/bin/bash"))
-                   (out (assoc-ref outputs "out")))
+                   (out (string-append
+                         (assoc-ref outputs "out")
+                         "/share/",name  "/" ,version)))
 
                ;; Copy over the "release" bootrap
                (invoke "chmod" "-R" "u+rw" "./")
@@ -110,7 +117,7 @@
 
                #t))))
        #:configure-flags '(,@(gambit-c-configure-flags v))))
-    (native-inputs `(("boot", gambit-c-bootstrap)
+    (native-inputs `(("gambit-c-bootstrap", gambit-c-bootstrap)
                      ("openssl" ,openssl)
                      ("bash" , bash)))))
 (define (stamp.h v)
@@ -138,7 +145,7 @@
 "))))
 
 (define* (make-gambit-c-package
-          v #:optional (bootstrap (make-gambit-c-bootstrap v)))
+          v #:optional (bootstrap gambit-c-unstable-bootstrap))
   (package
     (inherit gambit-c)
     (name "gambit-c-unstable")
@@ -167,37 +174,41 @@
                       (invoke "cat" "include/stamp.h")))
          (replace 'build
            (lambda* (#:key outputs inputs native-inputs #:allow-other-keys)
-                      (let ((bootroot (assoc-ref (or native-inputs inputs) "gambit-c-bootstrap")))
-                      (invoke "chmod" "-R" "u+rw" "./")
-                      (copy-recursively bootroot "boot/")
-                      (invoke "chmod" "-R" "u+rw" "./")
-                      (invoke "cp" "boot/gsc/gsc" "gsc-boot")
-                      (invoke "make" "bootclean")
-                      (invoke "sh" "-c" "make stamp ; make from-scratch && make modules")
-                      #true))))
+             (let ((bootroot
+                    (string-append
+                     (assoc-ref (or native-inputs inputs)
+                                "gambit-c-unstable-bootstrap")
+                     "/share/gambit-c-unstable-bootstrap/" ,version)))
+               (invoke "chmod" "-R" "u+rw" "./")
+               (copy-recursively bootroot "boot/")
+               (invoke "chmod" "-R" "u+rw" "./")
+               (invoke "cp" "boot/gsc/gsc" "gsc-boot")
+               (invoke "make" "bootclean")
+               (invoke "sh" "-c" "make stamp ; make from-scratch && make modules")
+               #true))))
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
     #;(inputs `(("gcc-toolchain" ,gcc-toolchain)
-              ("linux-headers" ,linux-libre-headers)))
-    (native-inputs `(("gambit-c-bootstrap", bootstrap)
+              ("linux-headers" ,linux-libre-headers)
+              ))
+    (native-inputs `(("gambit-c-unstable-bootstrap", bootstrap)
                      ("openssl" ,openssl)))))
 
-(define gambit-c-versions dv:versions)
-(define gambit-c-unstable-version (car gambit-c-versions))
+(define gambit-c-unstable-version dv:latest)
 
-#;(define-public gambit-c-unstable-bootstrap
+(define-public gambit-c-unstable-bootstrap
   (make-gambit-c-bootstrap gambit-c-unstable-version))
 
-(define-public gambit-c-packages (map make-gambit-c-package gambit-c-versions))
+#;(define-public gambit-c-packages (map make-gambit-c-package gambit-c-versions))
 
-(define-public gambit-c-unstable (car gambit-c-packages))
+(define-public gambit-c-unstable (make-gambit-c-package gambit-c-unstable-version))
 
-(define (exsym pkg)
+#;(define (exsym pkg)
   (string->symbol (string-append "gambit-unstable-" (package-version pkg))))
 
-(define (modsym pkg)
+#;(define (modsym pkg)
   (define sym (exsym pkg))
   (module-define! (current-module) sym pkg)
   (eval `(export ,sym) (interaction-environment)))
 
-(for-each modsym gambit-c-packages)
+#;(for-each modsym gambit-c-packages)

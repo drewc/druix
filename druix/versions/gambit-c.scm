@@ -1,4 +1,5 @@
-(define-module (druix versions gambit-c) #:use-module (druix versions) #:use-module (oop goops) #:export (versions))
+(define-module (druix versions gambit-c) #:use-module (druix versions)
+  #:use-module (oop goops) #:export (versions latest))
 (define versions 
   (list 
    (make <druix-version-git> #:major 4 #:minor 9 #:patch 3 #:revision 1427
@@ -11,3 +12,5 @@
      #:sha256 "17f1zyvs0qazqbqczbsspqrz2vzsabg8kbz2xf1z5x6xxxvkqimc"
      #:repo "https://github.com/gambit/gambit.git"
      #:commit "1d5b01330881b3e26345dbaabfd35bbdfae36330")))
+
+(define latest (car versions))
