@@ -58,32 +58,32 @@
 System on hardware which requires nonfree software to function.")))
 
 (define-public linux-5.13
-  (corrupt-linux linux-libre-5.13 "5.13.8"
-                 "0a54r71mcyqvq7c8kff817vh6zfj0bdzmp6ql4az84wq9nwc526h"))
+  (corrupt-linux linux-libre-5.13 "5.13.10"
+                 "01fpj02q4vdn7i6f6710lly0w33cd5gfvn6avgrjglcbiwdzbjih"))
 
 (define-public linux-5.10
-  (corrupt-linux linux-libre-5.10 "5.10.56"
-                 "0szcj0lbs33wmphxzvcc8jzfdvzncgxy2q8b1s4l9yjhkighssjd"))
+  (corrupt-linux linux-libre-5.10 "5.10.58"
+                 "047j51w4yyvfva19nc8pvbsqqzar80k6nfqwcaa5irirwmmwab3k"))
 
 (define-public linux-5.4
-  (corrupt-linux linux-libre-5.4 "5.4.138"
-                 "0mw6k9zrcmv1j4b3han5c0q8xbh38bka2wkkbl1y3ralg9r5ffd4"))
+  (corrupt-linux linux-libre-5.4 "5.4.140"
+                 "0hvygxc6nj0lzpm1bkvz3r8b2k0ybp7rxcxfa2n0bs7jyhnplr9c"))
 
 (define-public linux-4.19
-  (corrupt-linux linux-libre-4.19 "4.19.201"
-                 "1l6ww5igjv6r2zl1zyq7mzsmpc884p7hpds7l9jfwil232kxydc2"))
+  (corrupt-linux linux-libre-4.19 "4.19.203"
+                 "1ykahjymz12ayx7qgmrpndsdf61pb8gxfl2nadqrv02imr845c7z"))
 
 (define-public linux-4.14
-  (corrupt-linux linux-libre-4.14 "4.14.242"
-                 "0p0s9hd8ks25a2fndzw36rqflw3xbcb3cq8sldlfj8jdli11qg9y"))
+  (corrupt-linux linux-libre-4.14 "4.14.243"
+                 "0wdk93qv91pa6bd3ff1gv7manhkzh190c5blcpl14cbh9m2ms8vz"))
 
 (define-public linux-4.9
-  (corrupt-linux linux-libre-4.9 "4.9.278"
-                 "04byav6cbga3jqkppygm5zj73d9v44xyvx6hbrhwr22lsk282dz7"))
+  (corrupt-linux linux-libre-4.9 "4.9.279"
+                 "01rf3xh2jcz6l2h79g0m02i8f9q51j64wvgvzi8lmq0gx9yvbv91"))
 
 (define-public linux-4.4
-  (corrupt-linux linux-libre-4.4 "4.4.278"
-                 "1r2sbxn8finzcg72ds5dyh4578vv2s5zwylq3b3xyw3hzr4swn4f"))
+  (corrupt-linux linux-libre-4.4 "4.4.280"
+                 "1b9jx9zkycj0xjmy35890q5phiznayaz730dmsv3mdjg4qgfn18y"))
 
 (define-public linux linux-5.13)
 ;; linux-lts points to the *newest* released long-term support version.
@@ -177,6 +177,32 @@ advanced 3D.")
 graphics cards can be run with the free Mesa, some cards require a nonfree
 kernel module to run properly and support features like hibernation and
 advanced 3D.")))
+
+(define-public raspberrypi-firmware
+(package
+  (name "raspberrypi-firmware")
+  (version "1.20210527")
+  (source (origin
+            (method git-fetch)
+            (uri (git-reference
+                  (url "https://github.com/raspberrypi/firmware")
+                  (commit version)))
+            (file-name (git-file-name name version))
+            (sha256
+             (base32
+              "08lgg90k6lhqm3ccg7db0lrrng0pgf63dvbrxpfpwm1pswrc5vf5"))))
+  (build-system copy-build-system)
+  (synopsis "Firmware for the Raspberry Pi boards")
+  (description "Pre-compiled binaries of the current Raspberry Pi kernel
+and modules, userspace libraries, and bootloader/GPU firmware.")
+  (home-page "https://github.com/raspberrypi/firmware")
+  (supported-systems '("armhf-linux" "aarch64-linux"))
+  (license
+    (list gpl2
+	  (nonfree
+	    (string-append "file://boot/LICENCE.broadcom"))
+	  (nonfree
+	    (string-append "file://opt/vc/LICENCE"))))))
 
 (define-public atheros-firmware
   (package
