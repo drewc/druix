@@ -1,0 +1,145 @@
+#+TITLE: Ledger SMB
+
+* Build the Perl Libs for Distribution
+
+The easy way is to make a binary release of the "perl" libs on top of Guix and
+then use that for a package.
+
+#+begin_src shell
+LSMB_RELEASE="1.8.19"
+LSMB_FN="ledgersmb-$LSMB_RELEASE.tar.gz"
+LSMB_DL="https://download.ledgersmb.org/f/Releases/$LSMB_RELEASE/$LSMB_FN"
+
+cd /tmp/
+wget $LSMB_DL
+tar zxvf $LSMB_FN
+#+end_src
+
+That puts everything in a ~./ledgersmb/~ folder.
+
+For ~diff~ AKA ~rsync --compare-dest=DIR~ reasons we'll copy the full directory
+to ~ledgersmb.dist~ using rsync.
+
+#+begin_src shell
+rsync -avHz ledgersmb ledgersmb.dist
+#+end_src
+
+To test it all out here's what should do nothing at this point.
+
+#+begin_src shell
+rsync -aHzv --dry-run --compare-dest=/tmp/ledgersmb.dist/ ledgersmb ledgersmb-lib/
+#+end_src
+
+#+RESULTS:
+
+** Bootstrap ~local::lib~ for local cpan
+
+Using the guix cpan we can install something that says "use our directory
+please".
+
+#+begin_src shell
+guix install perl perl-libwww
+
+# -g module [ module ... ]
+#         Downloads to the current directory the latest distribution of the
+#         module.
+
+cpan -g local::lib
+LLIB_TB=$(find . -name 'local-lib*.tar.gz' -print -quit 2>/dev/null)
+tar zxvf $LLIB_TB
+cd $(basename $LLIB_TB .tar.gz)
+
+perl Makefile.PL --bootstrap="/tmp/ledgersmb"
+#+end_src
+
+We can see that start to take form.
+
+#+begin_src shell
+rsync -aHzv --dry-run --compare-dest=/tmp/ledgersmb.dist/ ledgersmb ledgersmb-lib/
+
+# sending incremental file list
+# created directory ledgersmb-lib
+# ledgersmb/
+# ledgersmb/lib/
+# ledgersmb/lib/perl5/
+# ledgersmb/lib/perl5/5.30.2/
+# ledgersmb/lib/perl5/lib/core/
+
+#  [ ... ] Whole bunch more
+# ledgersmb/lib/perl5/lib/core/only.pm
+# ledgersmb/lib/perl5/local/
+# ledgersmb/lib/perl5/local/lib.pm
+# ledgersmb/lib/perl5/x86_64-linux-thread-multi/auto/local/
+# ledgersmb/lib/perl5/x86_64-linux-thread-multi/auto/local/lib/
+
+# sent 81,622 bytes  received 752 bytes  164,748.00 bytes/sec
+# total size is 36,093,785  speedup is 438.17 (DRY RUN)
+
+#+end_src
+#+begin_src shell
+guix install perl perl-libwww
+
+# -g module [ module ... ]
+#         Downloads to the current directory the latest distribution of the
+#         module.
+
+cpan -g local::lib
+LLIB_TB=$(find . -name 'local-lib*.tar.gz' -print -quit 2>/dev/null)
+tar zxvf $LLIB_TB
+cd $(basename $LLIB_TB .tar.gz)
+
+perl Makefile.PL --bootstrap="/tmp/ledgersmb"
+
+cd ledgersmb/
+ cd local-lib-2.000024
+ perl Makefile.PL --bootstrap="$(pwd)/../"
+ make test && make install
+
+perl -I$(pwd)/../lib/perl5 -Mlocal::lib=$(pwd)/../
+# =>
+PATH="/tmp/ledgersmb/local-lib-2.000024/../bin${PATH:+:${PATH}}"; export PATH;
+PERL5LIB="/tmp/ledgersmb/local-lib-2.000024/../lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
+PERL_LOCAL_LIB_ROOT="/tmp/ledgersmb/local-lib-2.000024/../${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
+PERL_MB_OPT="--install_base \"/tmp/ledgersmb/local-lib-2.000024/../\""; export PERL_MB_OPT;
+PERL_MM_OPT="INSTALL_BASE=/tmp/ledgersmb/local-lib-2.000024/../"; export PERL_MM_OPT;
+
+
+eval `perl -I$(pwd)/../lib/perl5 -Mlocal::lib=$(pwd)/../`
+cpan -i App::cpanminus
+
+cd ..
+
+cpanm  --notest --with-feature=starman --with-feature=latex-pdf-ps  --installdeps "$(pwd)"
+
+
+
+#+end_src
+
+#+begin_src scheme
+(package
+  (name "ledger-smb")
+  (version "1.8.15")
+  (source
+   (origin
+     (method url-fetch/tarbomb)
+     (uri (string-append
+           "https://download.ledgersmb.org/f/Releases/" version
+           "ledgersmb-" version ".tar.gz"))
+     (sha256
+      (base32
+       "0p89wqid109y03vjyvkw8kk309hal2f8865a8hd9hhchc48av7w1"))))
+  (inputs `(("perl-authen-sasl" ,perl-authen-sasl)
+            ("perl-cgi-emulate-psgi" ,perl-cgi-emulate-psgi)
+            ("perl-config-inifiles" ,perl-config-inifiles)
+            ("perl-cookie-baker" ,perl-cookie-baker)
+            ("perl-dbd-pg" ,perl-dbd-pg)
+            ("perl-dbi" ,perl-dbi)
+            ("perl-data-uuid", perl-data-uuid)
+            ("perl-datetime", perl-datetime)
+            ("perl-datetime-format-strptime" ,perl-datetime-format-strptime)
+            ("perl-email-sender" ,perl-email-sender)
+
+            ))
+
+  )
+#+end_src

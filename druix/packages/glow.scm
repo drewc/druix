@@ -1,5 +1,6 @@
 (define-module (druix packages glow)
   #:use-module (druix packages glow-contacts)
+  #:use-module (druix packages go-ethereum)
   #:use-module (druix packages scheme gerbil gerbil-ethereum)
   #:use-module (druix packages glow-lang)
   #:use-module (gnu packages base)
@@ -18,4 +19,5 @@
                          ("coreutils", coreutils-minimal)
                          ("sqlite", sqlite)
                          ("glow-lang", glow-lang)
+                         ("go-ethereum", go-ethereum)
                          ("gerbil-ethereum", gerbil-ethereum)))))

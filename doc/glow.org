@@ -12,6 +12,7 @@ desire.
 #+begin_src scheme :tangle ../druix/packages/glow.scm
 (define-module (druix packages glow)
   #:use-module (druix packages glow-contacts)
+  #:use-module (druix packages go-ethereum)
   #:use-module (druix packages scheme gerbil gerbil-ethereum)
   #:use-module (druix packages glow-lang)
   #:use-module (gnu packages base)
@@ -30,6 +31,7 @@ desire.
                          ("coreutils", coreutils-minimal)
                          ("sqlite", sqlite)
                          ("glow-lang", glow-lang)
+                         ("go-ethereum", go-ethereum)
                          ("gerbil-ethereum", gerbil-ethereum)))))
 #+end_src
 
@@ -101,7 +103,7 @@ DOCKBALL=$(guix pack -f docker -S /bin=bin --entry-point=/bin/glow-contacts  glo
 Building it eventually outputs a tarball in the store
 
 #+begin_src shell
-DOCKBALL=/gnu/store/6yqxfjj4sqxzgraz93mcghg9lb2gvhrf-glow-docker-pack.tar.gz
+DOCKBALL=/gnu/store/4ahd3922imh986r829wlbs24vhmx5a42-glow-docker-pack.tar.gz
 #+end_src
 
 We'll copy it to a more reasonable name.
@@ -135,29 +137,6 @@ And a squashfs image.
 #+begin_src shell
 guix pack -f squashfs --entry-point=bin/glow bash glow-lang
 #+end_src
-
-* TODO Docker: coastal, not offshore
-
-As of now, [2021-06-22 Tue], I've not yet made GETH (Ethereum-Go) work under
-~guix~. Docker is a choice that, while somewhat clunky, does in fact have an image that will run my PET.
-
-#+begin_src shell
-docker pull ethereum/client-go
-#+end_src
-
-Now a script that runs geth.
-
-#+begin_src shell :shebang #!/bin/sh :tangle geth.sh
-exec docker run -it -p 8545:8545 -p 30303:30303 ethereum/client-go "$@"
-#+end_src
-
-#+begin_src shell
-(echo geth --datadir /home/drewc/.local/share/glow/geth --identity GlowPrivateEthereumTestNet --verbosity 4 --miner.etherbase 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC --nodiscover --maxpeers 0 --nousb --networkid 17 --nat any --vmdebug --unlock 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC account import --password /dev/null /tmp/croesus-tmp-egXs5B.prv ; geth --datadir /home/drewc/.local/share/glow/geth --identity GlowPrivateEthereumTestNet --verbosity 4 --miner.etherbase 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC --nodiscover --maxpeers 0 --nousb --networkid 17 --nat any --vmdebug --unlock 0x25c0bb1A5203AF87869951AEf7cF3FEdD8E330fC account import --password /dev/null /tmp/croesus-tmp-egXs5B.prv) < /dev/nul
-l >> /home/drewc/.local/share/glow//log/geth/geth.log 2>&1
-#+end_src
-
-https://www.freecodecamp.org/news/how-to-run-geth-from-a-docker-container-b6d30620ca74/
-
 
 * ~glow-lang~ package
 #+begin_src scheme

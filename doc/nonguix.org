@@ -41,7 +41,17 @@ That's where a subtree comes into play.
 
 We've already got a repo for the subtrees.
 
+Update that repo.
+
 #+begin_src shell
+cd nonguix;
+git subtree split --prefix=nonguix --branch=nonguix
+git subtree split --prefix=nongnu --branch=nongnu
+cd ..
+#+end_src
+
+#+begin_src shell
+cd druix
 git subtree pull --prefix nonguix ../nonguix/ nonguix --squash
 
 git subtree pull --prefix nongnu ../nonguix/ nongnu --squash
