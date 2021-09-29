@@ -83,19 +83,19 @@
 
 ;; Update this id with every firefox update to it's release date.
 ;; It's used for cache validation and therefor can lead to strange bugs.
-(define %firefox-build-id "20210810000000")
+(define %firefox-build-id "20210923000000")
 
 (define-public firefox
   (package
     (name "firefox")
-    (version "91.0")
+    (version "92.0.1")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://archive.mozilla.org/pub/firefox/releases/"
                            version "/source/firefox-" version ".source.tar.xz"))
        (sha256
-        (base32 "00br0x68jxwkwc86v74ymjjd3vyidfrv0sjf1lw6hzxpi9w1yk9a"))))
+        (base32 "1c9yc3mfihzj00q9xf52xd65j6m74wv8zvsy1l49klic2qpb55lh"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -290,6 +290,8 @@
                                            "/lib"))
                           '("pulseaudio" "mesa"
                             "udev"      ;; For U2F and WebAuthn
+                            ;; For hardware video acceleration via VA-API
+                            "libva"
                             ;; For the integration of native notifications
                             "libnotify")))
                     (gtk-share (string-append (assoc-ref inputs "gtk+")
@@ -359,6 +361,7 @@
        ("libjpeg-turbo" ,libjpeg-turbo)
        ("libnotify" ,libnotify)
        ;; ("libpng-apng" ,libpng-apng)
+       ("libva" ,libva)
        ("libvpx" ,libvpx)
        ("libxcomposite" ,libxcomposite)
        ("libxft" ,libxft)
