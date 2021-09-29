@@ -31,14 +31,14 @@
 (define-public clojure-tools
   (package
     (name "clojure-tools")
-    (version "1.10.3.933")
+    (version "1.10.3.943")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://download.clojure.org/install/clojure-tools-"
                            version
                            ".tar.gz"))
-       (sha256 (base32 "0w359cw3079xdhvl5z7hdd4h0jbdacpm9l12xszwdbsnfgyb9jf6"))))
+       (sha256 (base32 "1yrk6m9f6n8f0drpx305jb95d61py423aawkl2p6syr2kfyx2w63"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
@@ -72,15 +72,15 @@ programs.")
 (define leiningen-jar
   (package
     (name "leiningen-jar")
-    (version "2.9.6")
+    (version "2.9.7")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/technomancy/leiningen/releases/download/"
-                                  version "/leiningen-" version "-standalone.zip"))
+                                  version "/leiningen-" version "-standalone.jar"))
               (file-name "leiningen-standalone.jar")
               (sha256
                (base32
-                "1f3hb57rqp9qkh5n2wf65dvxraf21y15s3g643f2fhzc7vvl7ia1"))))
+                "00m8xbrfbkv84jncssr3jg86y6k7pc2iamvdpl7bppgcmha19w42"))))
     (build-system trivial-build-system)
     (arguments
      `(#:modules ((guix build utils))
@@ -102,7 +102,7 @@ lets you focus on your code.")
   (package
     (inherit leiningen-jar)
     (name "leiningen")
-    (version "2.9.6")
+    (version "2.9.7")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -111,7 +111,7 @@ lets you focus on your code.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0z1zwx5aq5gvp6396gmq8dl0yh0i8sshsw3vsvfbl96246in5yz8"))))
+                "1sx54g50rb6pj9mhqp77byh1ikfic7cmyifacxn4mi4a5j949kly"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
