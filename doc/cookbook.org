@@ -1,7 +1,66 @@
 #+TITLE: Druix Cookbook: recipes both tested and in progress
 
-* Druix Build Farm
 
+* NGINX and LetsEncypt
+
+https://notabug.org/jbranso/linode-guix-system-configuration/src/master/linode-locke-lamora-current-config.scm was a big help.
+
+#+begin_src shell
+sudo mkdir -p /srv/http/music-make.rs
+#+end_src
+#+begin_src scheme
+
+(use-modules (gnu services web))
+(use-service-modules
+ certbot web
+ desktop networking ssh xorg databases nix docker virtualization)
+        ; ...
+        ;
+(define %nginx-deploy-hook
+  (program-file
+   "nginx-deploy-hook"
+   #~(let ((pid (call-with-input-file "/var/run/nginx/pid" read)))
+       (kill pid SIGHUP))))
+
+(operating-system
+                                       ; ...
+  (services
+   (append
+                                        ; ...
+    (service certbot-service-type
+                      (certbot-configuration
+                       (email "drewc@music-make.rs")
+                       (webroot "/srv/http")
+                       (certificates
+                        (list
+                         (certificate-configuration
+                          (name "music-make.rs")
+                          (domains '("*.music.make.rs" "music-make.rs"))
+                          (deploy-hook %nginx-deploy-hook))))))
+    (service nginx-service-type
+              (nginx-configuration
+               (server-blocks
+                (list (nginx-server-configuration
+                       (server-name '("local.music-make.rs"))
+                       (listen '("80" "443 ssl http2"
+                                 "[::]:80" "[::]:443 ssl http2"))
+                       (ssl-certificate "/etc/letsencrypt/live/music-make.rs/fullchain.pem")
+                       (ssl-certificate-key "/etc/letsencrypt/live/music-make.rs/privkey.pem")
+                       (root "/srv/http/music-make.rs")
+                       (locations
+                        (list
+                         (nginx-location-configuration ;certbot
+                          (uri "/.well-known")
+                          (body (list "root /srv/http;"))))))))))
+    (service nginx-service-type
+             (nginx-configuration
+              (server-blocks
+               (list (nginx-server-configuration
+                      (server-name '("*.music-make.rs"))
+                      (root "/srv/http/music-make.rs")))))))))
+
+
+#+end_src
 
 
 * Run Nix on top of DruixSD
