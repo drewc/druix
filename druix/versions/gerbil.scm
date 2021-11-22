@@ -11,6 +11,28 @@
       #:patch
       #f
       #:revision
+      243
+      #:ymd
+      20211029
+      #:hms
+      83016
+      #:sha256
+      "1jjm271bfpqski0l1z7sjqkdba135j595f6fnkvjym9yxwznxndy"
+      #:repo
+      "https://github.com/vyzo/gerbil.git"
+      #:commit
+      "87c6279bfaf0b9e8d5d418415687f703b5be75dd")
+
+    (make <druix-version-git>
+      #:name
+      "gerbil"
+      #:major
+      0
+      #:minor
+      16
+      #:patch
+      #f
+      #:revision
       192
       #:ymd
       20210608
