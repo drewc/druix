@@ -58,13 +58,13 @@
      "The unmodified Linux kernel, including nonfree blobs, for running Guix
 System on hardware which requires nonfree software to function.")))
 
-(define-public linux-5.14
-  (corrupt-linux linux-libre-5.14 "5.14.8"
-                 "12cvvrxky92z1g9kj7pgb83yg9pnv2fvi7jf0pyagvqjqladl3na"))
+(define-public linux-5.15
+  (corrupt-linux linux-libre-5.15 "5.15.5"
+                 "07w5k2y5hk6ys19zgg3x21g6im9x0pwk5f6f8b0q3b152lq5lmp9"))
 
 (define-public linux-5.10
-  (corrupt-linux linux-libre-5.10 "5.10.64"
-                 "02p36mf41nsa4bamw18vhgbca094q2blbqqljdsb9qid9b94pf1y"))
+  (corrupt-linux linux-libre-5.10 "5.10.81"
+                 "1nssv94zivx08vrxxflq4dxk5fxl3azsqlnzvw58qnf469hniqd2"))
 
 (define-public linux-5.4
   (corrupt-linux linux-libre-5.4 "5.4.145"
@@ -86,14 +86,14 @@ System on hardware which requires nonfree software to function.")))
   (corrupt-linux linux-libre-4.4 "4.4.283"
                  "1d9v4h4cbc4i371lhhwpxbmg88gna6xyi2ahfvv0clz60802y982"))
 
-(define-public linux linux-5.14)
+(define-public linux linux-5.15)
 ;; linux-lts points to the *newest* released long-term support version.
 (define-public linux-lts linux-5.10)
 
 (define-public linux-firmware
   (package
     (name "linux-firmware")
-    (version "20210818")
+    (version "20210919")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://git.kernel.org/pub/scm/linux/kernel"
@@ -101,7 +101,7 @@ System on hardware which requires nonfree software to function.")))
                                   "linux-firmware-" version ".tar.gz"))
               (sha256
                (base32
-                "0842k00kjh89497vvd7zy3j8d5xq180q2zkqmq0yivp2xkzvbwfc"))))
+                "1fy6alg7pz5bc09vq0icmgbwqpribws6nyc6k2pkip8jljmxvlr0"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
