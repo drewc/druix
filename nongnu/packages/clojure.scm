@@ -19,26 +19,29 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (nongnu packages clojure)
+  #:use-module (gnu packages compression)
+  #:use-module (gnu packages gcc)
   #:use-module (gnu packages readline)
-  #:use-module (guix packages)
   #:use-module (guix build-system copy)
   #:use-module (guix build-system gnu)
   #:use-module (guix build-system trivial)
   #:use-module (guix download)
   #:use-module (guix git-download)
+  #:use-module (guix packages)
+  #:use-module (nonguix build-system binary)
   #:use-module ((guix licenses) #:prefix license:))
 
 (define-public clojure-tools
   (package
     (name "clojure-tools")
-    (version "1.10.3.943")
+    (version "1.10.3.1029")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://download.clojure.org/install/clojure-tools-"
                            version
                            ".tar.gz"))
-       (sha256 (base32 "1yrk6m9f6n8f0drpx305jb95d61py423aawkl2p6syr2kfyx2w63"))))
+       (sha256 (base32 "14c08xva1r6sl3h78vhckwx5dd8kqwi7457prygh9330b7r8caa2"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
@@ -72,7 +75,7 @@ programs.")
 (define leiningen-jar
   (package
     (name "leiningen-jar")
-    (version "2.9.7")
+    (version "2.9.8")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://github.com/technomancy/leiningen/releases/download/"
@@ -80,7 +83,7 @@ programs.")
               (file-name "leiningen-standalone.jar")
               (sha256
                (base32
-                "00m8xbrfbkv84jncssr3jg86y6k7pc2iamvdpl7bppgcmha19w42"))))
+                "13f4n15i0gsk9jq52gxivnsk32qjahmxgrddm54cf8ynw0a923ia"))))
     (build-system trivial-build-system)
     (arguments
      `(#:modules ((guix build utils))
@@ -102,7 +105,7 @@ lets you focus on your code.")
   (package
     (inherit leiningen-jar)
     (name "leiningen")
-    (version "2.9.7")
+    (version "2.9.8")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -111,7 +114,7 @@ lets you focus on your code.")
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "1sx54g50rb6pj9mhqp77byh1ikfic7cmyifacxn4mi4a5j949kly"))))
+                "1i6pn8vzzhgnm9hmlb92z65l79nxcxa5zdsrgg5svq7vmbixgnhl"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
@@ -134,3 +137,38 @@ lets you focus on your code.")
                         #t))))))
     (inputs
      `(("leiningen-jar" ,leiningen-jar)))))
+
+(define-public clj-kondo
+ (package
+   (name "clj-kondo")
+   (version "2021.10.19")
+   (source (origin
+             (method url-fetch/zipbomb)
+             (uri (string-append
+                   "https://github.com/clj-kondo/clj-kondo/releases/download/v"
+                   version "/clj-kondo-" version "-linux-amd64.zip"))
+             (sha256
+              (base32
+               "1xiv7waaj2lkfxszaklg59gkkfsrqh39i3a8bj9slq6lg80q7lxs"))))
+   (build-system binary-build-system)
+   (arguments
+    `(#:patchelf-plan
+      '(("clj-kondo" ("gcc:lib" "zlib")))
+      #:install-plan
+      '(("clj-kondo" "/bin/"))
+      #:phases
+      (modify-phases %standard-phases
+         (add-after 'unpack 'chmod
+           (lambda _
+             (chmod "clj-kondo" #o755))))))
+   (native-inputs
+    `(("unzip" ,unzip)))
+   (inputs
+    `(("gcc:lib" ,gcc "lib")
+      ("zlib" ,zlib)))
+   (supported-systems '("x86_64-linux"))
+   (home-page "https://github.com/clj-kondo/clj-kondo")
+   (synopsis  "Linter for Clojure code")
+   (description "Clj-kondo performs static analysis on Clojure, ClojureScript
+and EDN, without the need of a running REPL.")
+   (license license:epl1.0)))

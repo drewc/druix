@@ -3,6 +3,7 @@
 ;;; Copyright © 2020, 2021 ison <ison@airmail.cc>
 ;;; Copyright © 2021 pineapples
 ;;; Copyright © 2021 Jean-Baptiste Volatier <jbv@pm.me>
+;;; Copyright © 2021 Kozo <kozodev@runbox.com>
 ;;;
 ;;; This file is not part of GNU Guix.
 ;;;
@@ -31,7 +32,7 @@
 ;;; A container wrapper creates the following store items:
 ;;; * Main container package [nonguix-container->package] (basically a dummy
 ;;;   package with symlink to wrapper script)
-;;;   - Wrapper script [make-container-wrapper] (runs "guix environment")
+;;;   - Wrapper script [make-container-wrapper] (runs "guix shell")
 ;;;     References:
 ;;;     -> manifest.scm [make-container-manifest] (used by wrapper to guarantee
 ;;;        exact store items)
@@ -165,7 +166,8 @@
                     "/lib64/alsa-lib"
                     "/lib64/dri"
                     "/lib64/nss"
-                    "/lib64/vdpau")))
+                    "/lib64/vdpau"
+                    "$HOME/.local/share/Steam/ubuntu12_32/steam-runtime/lib/x86_64-linux-gnu")))
                ;; .steam-real will fail unless it is renamed to exactly "steam".
                (rename-file (string-append out "/bin/steam")
                             (string-append out "/bin/steam-wrapper"))
@@ -318,7 +320,8 @@ in a sandboxed FHS environment."
                 (manifest-file #$(file-append fhs-manifest))
                 (xdg-runtime (getenv "XDG_RUNTIME_DIR"))
                 (home (getenv "HOME"))
-                (sandbox-home (string-append home "/" #$(ngc-sandbox-home container)))
+                (sandbox-home (or (getenv "GUIX_SANDBOX_HOME")
+                                  (string-append home "/" #$(ngc-sandbox-home container))))
                 (preserved-env '("^DBUS_"
                                  "^DISPLAY$"
                                  "^DRI_PRIME$"
@@ -361,8 +364,8 @@ in a sandboxed FHS environment."
                    "--start"
                    "--exit-idle-time=60")
            (apply invoke
-                  `("guix" "environment"
-                    "--ad-hoc" "--container" "--no-cwd" "--network"
+                  `("guix" "shell"
+                    "--container" "--no-cwd" "--network"
                     ,@(map preserve-var preserved-env)
                     ,@(map add-path expose)
                     ,@(map (lambda (item)
