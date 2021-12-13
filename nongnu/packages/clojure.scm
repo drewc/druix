@@ -34,14 +34,14 @@
 (define-public clojure-tools
   (package
     (name "clojure-tools")
-    (version "1.10.3.1029")
+    (version "1.10.3.1040")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://download.clojure.org/install/clojure-tools-"
                            version
                            ".tar.gz"))
-       (sha256 (base32 "14c08xva1r6sl3h78vhckwx5dd8kqwi7457prygh9330b7r8caa2"))))
+       (sha256 (base32 "0xvr9nmk9q789vp32zmmzj4macv8v7y9ivnfd6lf7i8vxgg6hvgv"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
@@ -141,7 +141,7 @@ lets you focus on your code.")
 (define-public clj-kondo
  (package
    (name "clj-kondo")
-   (version "2021.10.19")
+   (version "2021.12.01")
    (source (origin
              (method url-fetch/zipbomb)
              (uri (string-append
@@ -149,7 +149,7 @@ lets you focus on your code.")
                    version "/clj-kondo-" version "-linux-amd64.zip"))
              (sha256
               (base32
-               "1xiv7waaj2lkfxszaklg59gkkfsrqh39i3a8bj9slq6lg80q7lxs"))))
+               "07nhb3x9nndbs4rh3q1xdwp1zdi1j11fz55f0273vaj1jjwxbrm7"))))
    (build-system binary-build-system)
    (arguments
     `(#:patchelf-plan
