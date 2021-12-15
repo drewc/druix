@@ -7,18 +7,18 @@
 ;;; Copyright © 2016 Alex Griffin <a@ajgrf.com>
 ;;; Copyright © 2017 Clément Lassieur <clement@lassieur.org>
 ;;; Copyright © 2017, 2018 Nikita <nikita@n0.is>
-;;; Copyright (C) 2017, 2018 ng0 <gillmann@infotropique.org>
+;;; Copyright © 2017, 2018 ng0 <gillmann@infotropique.org>
 ;;; Copyright © 2017, 2018, 2020 Tobias Geerinckx-Rice <me@tobias.gr>
 ;;; Copyright © 2018, 2020 Ricardo Wurmus <rekado@elephly.net>
 ;;; Copyright © 2019 Ivan Petkov <ivanppetkov@gmail.com>
 ;;; Copyright © 2020 Oleg Pykhalov <go.wigust@gmail.com>
 ;;; Copyright © 2020 Jakub Kądziołka <kuba@kadziolka.net>
 ;;; Copyright © 2019, 2020 Adrian Malacoda <malacoda@monarch-pass.net>
-;;; Copyright (C) 2019, 2020 Adrian Malacoda <malacoda@monarch-pass.net>
 ;;; Copyright © 2020, 2021 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2020 Zhu Zihao <all_but_last@163.com>
 ;;; Copyright © 2021 pineapples <guixuser6392@protonmail.com>
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
+;;; Copyright © 2021 John Kehayias <john.kehayias@protonmail.com>
 ;;;
 ;;; This file is not part of GNU Guix.
 ;;;
@@ -83,19 +83,19 @@
 
 ;; Update this id with every firefox update to it's release date.
 ;; It's used for cache validation and therefor can lead to strange bugs.
-(define %firefox-build-id "20211017000000")
+(define %firefox-build-id "20211207000000")
 
 (define-public firefox
   (package
     (name "firefox")
-    (version "93.0")
+    (version "95.0")
     (source
      (origin
        (method url-fetch)
        (uri (string-append "https://archive.mozilla.org/pub/firefox/releases/"
                            version "/source/firefox-" version ".source.tar.xz"))
        (sha256
-        (base32 "00kiz6hnwmz659cqndpalxhyj4jajd03b7r9hi5jig29b07hi3x7"))))
+        (base32 "1pk493blyndvk49llg7jy62kvlan79qxp68fpbmv4467dqzy98vz"))))
     (build-system gnu-build-system)
     (arguments
      `(#:configure-flags
@@ -129,6 +129,8 @@
            "--disable-updater"
            "--enable-pulseaudio"
            "--disable-crashreporter"
+           ;; TODO: requires some work
+           "--without-wasm-sandboxed-libraries"
 
            ;; Build details
            "--disable-debug"
@@ -360,7 +362,7 @@
        ("gtk+" ,gtk+)
        ("gtk+-2" ,gtk+-2)
        ("hunspell" ,hunspell)
-       ("icu4c" ,icu4c-69)
+       ("icu4c" ,icu4c)
        ("jemalloc" ,jemalloc)
        ("libcanberra" ,libcanberra)
        ("libevent" ,libevent)
@@ -391,7 +393,7 @@
        ("zlib" ,zlib)))
     (native-inputs
      `(("autoconf" ,autoconf-2.13)
-       ("cargo" ,rust-1.51 "cargo")
+       ("cargo" ,rust "cargo")
        ("clang" ,clang-10)
        ("llvm" ,llvm-10)
        ("m4" ,m4)
@@ -400,7 +402,7 @@
        ("perl" ,perl)
        ("pkg-config" ,pkg-config)
        ("python" ,python)
-       ("rust" ,rust-1.51)
+       ("rust" ,rust)
        ("rust-cbindgen" ,rust-cbindgen-0.19)
        ("which" ,which)
        ("yasm" ,yasm)))
