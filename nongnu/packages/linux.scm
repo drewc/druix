@@ -59,8 +59,8 @@
 System on hardware which requires nonfree software to function.")))
 
 (define-public linux-5.15
-  (corrupt-linux linux-libre-5.15 "5.15.8"
-                 "1ggkq2szmh5jjd050rs9f7lxrvg2j1wgnxb96yqch2gf2drm4mnp"))
+  (corrupt-linux linux-libre-5.15 "5.15.10"
+                 "0jsv8lialjwp91qg9c9rh8rhn49a70ryyhzl19bxq3fhz1fwyks8"))
 
 (define-public linux-5.10
   (corrupt-linux linux-libre-5.10 "5.10.85"
@@ -512,8 +512,8 @@ package contains nonfree firmware for the following chips:
   (deprecated-package "rtl-bt-firmware" realtek-firmware))
 
 (define-public rtl8192eu-linux-module
-  (let ((commit "cdf1b06b7bff49042f42d0294610d3f3780ee62b")
-        (revision "1"))
+  (let ((commit "fb81d860ea4f6d54bfc2a9a8f1aa5c37eb6aea6b")
+        (revision "2"))
     (package
       (name "rtl8192eu-linux-module")
       (version (git-version "0.0.0" revision commit))
@@ -526,7 +526,7 @@ package contains nonfree firmware for the following chips:
          (file-name (git-file-name name version))
          (sha256
           (base32
-           "1afscxmjmapvm8hcd0blp1fn5lxg92rhpiqkgj89x53shfsp12d6"))))
+           "1cr5agl19srbpkklpjlhnrc9v3xdzm1lwrka4iafvp02k4sbwh02"))))
       (build-system linux-module-build-system)
       (arguments
        `(#:make-flags
@@ -544,6 +544,8 @@ package contains nonfree firmware for the following chips:
       (synopsis "Linux driver for Realtek RTL8192EU wireless network adapters")
       (description "This is Realtek's RTL8192EU Linux driver for wireless
 network adapters.")
+      ;; Rejected by Guix beause it contains a binary blob in:
+      ;; hal/rtl8192e/hal8192e_fw.c
       (license gpl2))))
 
 (define broadcom-sta-version "6.30.223.271")
@@ -598,25 +600,15 @@ network adapters.")
   (package
     (name "broadcom-sta")
     (version broadcom-sta-version)
-    (source #f)
+    (source
+     (match (or (%current-target-system) (%current-system))
+       ("x86_64-linux" broadcom-sta-x86_64-source)
+       (_ broadcom-sta-i686-source)))
     (build-system linux-module-build-system)
     (arguments
      `(#:linux ,linux
-       #:tests? #f
-       #:phases
-       (modify-phases %standard-phases
-         (replace 'unpack
-           (lambda* (#:key inputs #:allow-other-keys)
-             (let ((source (assoc-ref inputs "broadcom-sta-source")))
-               (invoke "tar" "xf" source)
-               (chdir ((@@ (guix build gnu-build-system) first-subdirectory) "."))
-               #t))))))
+       #:tests? #f))
     (supported-systems '("i686-linux" "x86_64-linux"))
-    (native-inputs
-     `(("broadcom-sta-source"
-        ,(match (or (%current-target-system) (%current-system))
-           ("x86_64-linux" broadcom-sta-x86_64-source)
-           (_ broadcom-sta-i686-source)))))
     (home-page "https://www.broadcom.com/support/802.11")
     (synopsis "Broadcom 802.11 Linux STA wireless driver")
     (description "This package contains Broadcom's IEEE 802.11a/b/g/n/ac hybrid
