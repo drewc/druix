@@ -3,8 +3,6 @@
   #:use-module (gnu packages commencement)
   #:use-module (gnu packages linux)
   #:use-module (druix utils)
-  #:use-module (guix licenses)
-  #:use-module (guix licenses)
   #:use-module ((druix versions gerbil) #:prefix dvg:)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module (guix packages)
@@ -126,7 +124,7 @@ system, similar to PLT Scheme's (sorry, Racket) modules.  The main difference fr
 is that Gerbil modules are single instantiation, supporting high performance ahead of
 time compilation and compiled macros.")
     (home-page "https://cons.io")
-    (license `(,lgpl2.1 ,asl2.0))))
+    (license `(,l:lgpl2.1 ,l:asl2.0))))
 
 (define (make-gerbil-unstable-configure-form flags)
   `(lambda* (#:key build target native-inputs inputs outputs
