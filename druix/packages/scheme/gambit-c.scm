@@ -1,30 +1,55 @@
 (define-module (druix packages scheme gambit-c)
   #:use-module (gnu packages)
   #:use-module (gnu packages linux)
+  #:use-module (guix download)
+  #:use-module (guix build-system gnu)
+  #:use-module (guix licenses)
   #:use-module (guix packages)
   #:use-module (gnu packages tls)
   #:use-module (gnu packages bash)
+  #:use-module (gnu packages texinfo)
   #:use-module (gnu packages commencement)
   #:use-module (guix git-download)
   #:use-module ((druix versions) #:prefix v:)
   #:use-module ((druix versions gambit-c) #:prefix dv:)
   #:use-module (gnu packages scheme))
 
-
-#;(use-modules (guix packages)
-             (guix download)
-             (guix build utils)
-             (gnu packages scheme)
-             (gnu packages tls)
-             (gnu packages rsync)
-             (gnu packages version-control)
-             (gnu packages compression))
+(define-public gambit-c
+  (package
+    (name "gambit-c")
+    (version "4.9.4")
+    (source
+     (origin
+       (method url-fetch)
+       (uri (string-append "http://gambitscheme.org/latest/gambit-v"
+             (string-map (lambda (c) (if (char=? c #\.) #\_ c)) version)
+             ".tgz"))
+       (sha256
+        (base32 "025x8zi9176qwww4d3pk8aj9ab1fpqyxqz26q3v394k6bfk49yqr"))))
+    (build-system gnu-build-system)
+    (arguments
+     '(#:configure-flags
+       ;; According to the ./configure script, this makes the build slower and
+       ;; use >= 1 GB memory, but makes Gambit much faster.
+       '("--enable-single-host")))
+    (home-page "http://dynamo.iro.umontreal.ca/wiki/index.php/Main_Page")
+    (synopsis "Efficient Scheme interpreter and compiler")
+    (description
+     "Gambit consists of two main programs: gsi, the Gambit Scheme
+interpreter, and gsc, the Gambit Scheme compiler.  The interpreter contains
+the complete execution and debugging environment.  The compiler is the
+interpreter extended with the capability of generating executable files.  The
+compiler can produce standalone executables or compiled modules which can be
+loaded at run time.  Interpreted code and compiled code can be freely
+mixed.")
+    ;; Dual license.
+    (license (list lgpl2.1+ asl2.0))))
 
 (define-public gambit-c-bootstrap
   (package
     (inherit gambit-c)
     (name "gambit-c-bootstrap")
-    (version "4.9.3")
+    (version "4.9.4")
     (arguments
      `(#:phases
        (modify-phases %standard-phases
@@ -54,7 +79,8 @@
         (pstr (string-append "PACKAGE_STRING=Gambit " vver)))
    (cons* pver pstr
           '("--enable-single-host"
-            "--enable-targets=js,python,ruby,php"
+            ;"--enable-targets=js,python,ruby,php"
+            "--enable-targets=js"
             "--enable-c-opt=-O1"
             "--enable-gcc-opts"
             "--enable-shared"
@@ -83,7 +109,7 @@
              (let ((bootroot
                     (string-append
                      (assoc-ref inputs "gambit-c-bootstrap")
-                     "/share/gambit-c-bootstrap/4.9.3"))
+                     "/share/gambit-c-bootstrap/4.9.4"))
                    (bsh (string-append
                          (assoc-ref (or native-inputs inputs) "bash")
                          "/bin/bash"))
@@ -192,7 +218,9 @@
               ("linux-headers" ,linux-libre-headers)
               ))
     (native-inputs `(("gambit-c-unstable-bootstrap", bootstrap)
-                     ("openssl" ,openssl)))))
+                     ("openssl" ,openssl)
+                     ("texinfo" ,texinfo)
+                     ("texi2html" ,texi2html)))))
 
 (define gambit-c-unstable-version dv:latest)
 

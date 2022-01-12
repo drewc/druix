@@ -9,6 +9,28 @@
       #:minor
       9
       #:patch
+      4
+      #:revision
+      4
+      #:ymd
+      20220109
+      #:hms
+      32410
+      #:sha256
+      "0nacpfflqi8a84hl9671jhpzx54as1h00ympq9m95v5pvdf2b504"
+      #:repo
+      "https://github.com/gambit/gambit.git"
+      #:commit
+      "7b2062fbf994bbf23f0198b0a438a8d4ec4e9c4a")
+
+    (make <druix-version-git>
+      #:name
+      "gambit-c"
+      #:major
+      4
+      #:minor
+      9
+      #:patch
       3
       #:revision
       1540
