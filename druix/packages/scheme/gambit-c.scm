@@ -78,13 +78,7 @@ mixed.")
         (pver (string-append "PACKAGE_VERSION=" vver))
         (pstr (string-append "PACKAGE_STRING=Gambit " vver)))
    (cons* pver pstr
-          '("--enable-single-host"
-            ;"--enable-targets=js,python,ruby,php"
-            "--enable-targets=js"
-            "--enable-c-opt=-O1"
-            "--enable-gcc-opts"
-            "--enable-shared"
-            "--enable-absolute-shared-libs" "--enable-openssl"))))
+          '("--enable-single-host" "--enable-openssl" "LIBS=-lpthread"))))
 
 (define (make-gambit-c-bootstrap v)
   (package
@@ -144,7 +138,7 @@ mixed.")
                #t))))
        #:configure-flags '(,@(gambit-c-configure-flags v))))
     (native-inputs `(("gambit-c-bootstrap", gambit-c-bootstrap)
-                     ("openssl" ,openssl)
+                     ("openssl:static" ,openssl "static")
                      ("bash" , bash)))))
 (define (stamp.h v)
   (with-output-to-string
@@ -214,10 +208,8 @@ mixed.")
                #true))))
 
        #:configure-flags '(,@(gambit-c-configure-flags v))))
-    #;(inputs `(("gcc-toolchain" ,gcc-toolchain)
-              ("linux-headers" ,linux-libre-headers)
-              ))
     (native-inputs `(("gambit-c-unstable-bootstrap", bootstrap)
+                     ("openssl:static" ,openssl "static")
                      ("openssl" ,openssl)
                      ("texinfo" ,texinfo)
                      ("texi2html" ,texi2html)))))
