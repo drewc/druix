@@ -3,9 +3,12 @@
 ;;; Copyright © 2019 Giacomo Leidi <goodoldpaul@autistici.org>
 ;;; Copyright © 2019 Timotej Lazar <timotej.lazar@araneo.si>
 ;;; Copyright © 2020, 2021 James Smith <jsubuntuxp@disroot.org>
-;;; Copyright © 2020, 2021 Jonathan Brielmaier <jonathan.brielmaier@web.de>
+;;; Copyright © 2020, 2021, 2022 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;; Copyright © 2021 Mathieu Othacehe <m.othacehe@gmail.com>
 ;;; Copyright © 2021 Brice Waegeneire <brice@waegenei.re>
+;;; Copyright © 2021 Risto Stevcev <me@risto.codes>
+;;; Copyright © 2021 aerique <aerique@xs4all.nl>
+;;; Copyright © 2022 Josselin Poiret <dev@jpoiret.xyz>
 ;;;
 ;;; This program is free software: you can redistribute it and/or modify
 ;;; it under the terms of the GNU General Public License as published by
@@ -58,13 +61,17 @@
      "The unmodified Linux kernel, including nonfree blobs, for running Guix
 System on hardware which requires nonfree software to function.")))
 
+(define-public linux-5.16
+  (corrupt-linux linux-libre-5.16 "5.16.14"
+                 "1xkl0mfjby7w6r3fqyjds94h2lmc77nzp970w7wz1rfmb63ab2vs"))
+
 (define-public linux-5.15
-  (corrupt-linux linux-libre-5.15 "5.15.10"
-                 "0jsv8lialjwp91qg9c9rh8rhn49a70ryyhzl19bxq3fhz1fwyks8"))
+  (corrupt-linux linux-libre-5.15 "5.15.28"
+                 "1rhhn2a7799nnvx8dj83glb0p0qakxanhxvvl7crznvip7rvp8nq"))
 
 (define-public linux-5.10
-  (corrupt-linux linux-libre-5.10 "5.10.85"
-                 "1b0rdd3yanfp63dy4ic1vvvsy5jdnr4zca9wjnw7si5c0lk1d2ds"))
+  (corrupt-linux linux-libre-5.10 "5.10.103"
+                 "02jq126r8dgqrhgdg8dym2v8xgp9jkjm8kf9zgj440s3wrasvf2g"))
 
 (define-public linux-5.4
   (corrupt-linux linux-libre-5.4 "5.4.145"
@@ -82,18 +89,14 @@ System on hardware which requires nonfree software to function.")))
   (corrupt-linux linux-libre-4.9 "4.9.282"
                  "059fin4si93ya13xy831w84q496ksxidpd3kyw38918sfy4p6wk7"))
 
-(define-public linux-4.4
-  (corrupt-linux linux-libre-4.4 "4.4.283"
-                 "1d9v4h4cbc4i371lhhwpxbmg88gna6xyi2ahfvv0clz60802y982"))
-
-(define-public linux linux-5.15)
+(define-public linux linux-5.16)
 ;; linux-lts points to the *newest* released long-term support version.
 (define-public linux-lts linux-5.10)
 
 (define-public linux-firmware
   (package
     (name "linux-firmware")
-    (version "20210919")
+    (version "20211216")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://git.kernel.org/pub/scm/linux/kernel"
@@ -101,7 +104,7 @@ System on hardware which requires nonfree software to function.")))
                                   "linux-firmware-" version ".tar.gz"))
               (sha256
                (base32
-                "1fy6alg7pz5bc09vq0icmgbwqpribws6nyc6k2pkip8jljmxvlr0"))))
+                "18qrlrkdzygmd9ihm7dziimkpzkfil50afnjwhfd88ic4gfkbxy0"))))
     (build-system gnu-build-system)
     (arguments
      `(#:tests? #f
@@ -171,16 +174,30 @@ advanced 3D.")))
 (define-public raspberrypi-firmware
 (package
   (name "raspberrypi-firmware")
-  (version "1.20210527")
+  (version "1.20220120")
   (source (origin
             (method git-fetch)
             (uri (git-reference
                   (url "https://github.com/raspberrypi/firmware")
                   (commit version)))
+            (modules '((guix build utils)
+                       (ice-9 ftw)
+                       (srfi srfi-26)))
+            (snippet
+             '(begin
+                (for-each (lambda (name)
+                            (delete-file-recursively name))
+                          `("documentation" "extra" ".github" "hardfp" "modules" "opt" "README.md"
+                            ,@(map (lambda (name)
+                                     (string-append "boot/" name))
+                                   (scandir "boot" (cut (file-name-predicate "^(kernel.*|COPYING\\.linux)$") <> #f)))))))
             (file-name (git-file-name name version))
             (sha256
              (base32
-              "08lgg90k6lhqm3ccg7db0lrrng0pgf63dvbrxpfpwm1pswrc5vf5"))))
+              "0s75fw4n83bkh78xh5rdgpiyp1bkvv1v18pawl4cs9v4gjkn6pi2"))))
+    (arguments
+     '(#:install-plan
+       '(("boot/" "."))))
   (build-system copy-build-system)
   (synopsis "Firmware for the Raspberry Pi boards")
   (description "Pre-compiled binaries of the current Raspberry Pi kernel
@@ -412,6 +429,26 @@ support for 5GHz and 802.11ac, among others.")
                "https://git.kernel.org/pub/scm/linux/kernel/git/firmware"
                "/linux-firmware.git/plain/LICENCE.iwlwifi_firmware")))))
 
+(define-public i915-firmware
+  (package
+    (inherit linux-firmware)
+    (name "i915-firmware")
+    (arguments
+     `(#:license-file-regexp "LICENCE.i915"
+       ,@(substitute-keyword-arguments (package-arguments linux-firmware)
+           ((#:phases phases)
+            `(modify-phases ,phases
+               (add-after 'unpack 'select-firmware
+                 ,(select-firmware "^i915/")))))))
+    (home-page "https://01.org/linuxgraphics/gfx-docs/drm/gpu/i915.html")
+    (synopsis "Nonfree firmware for Intel integrated graphics")
+    (description "This package contains the various firmware for Intel
+integrated graphics chipsets, including GuC, HuC and DMC.")
+    (license
+     (nonfree (string-append
+               "https://git.kernel.org/pub/scm/linux/kernel/git/firmware"
+               "/linux-firmware.git/plain/LICENCE.i915")))))
+
 (define-public realtek-firmware
   (package
     (inherit linux-firmware)
@@ -422,7 +459,8 @@ support for 5GHz and 802.11ac, among others.")
            ((#:phases phases)
             `(modify-phases ,phases
                (add-after 'unpack 'select-firmware
-                 ,(select-firmware "^(rtlwifi|rtl_nic|rtl_bt)/")))))))
+                 ,(select-firmware
+                   "^(rtlwifi|rtl_nic|rtl_bt|rtw88|rtw89)/")))))))
     (home-page "https://wireless.wiki.kernel.org/en/users/drivers/rtl819x")
     (synopsis "Nonfree firmware for Realtek ethernet, wifi, and bluetooth chips")
     (description
@@ -730,7 +768,7 @@ chipsets from Broadcom:
 (define-public intel-microcode
   (package
     (name "intel-microcode")
-    (version "20210608")
+    (version "20220207")
     (source
      (origin
        (method git-fetch)
@@ -741,7 +779,7 @@ chipsets from Broadcom:
              (commit (string-append "microcode-" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "08nk353z2lcqsjbm2qdsfapfgrvlfw0rj7r9scr9pllzkjj5n9x3"))))
+        (base32 "0g4fz108xzc1khxg50ll4spx8jgfmsp5k196i6yc0pq0zw0xilf8"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
@@ -783,42 +821,21 @@ documented in the respective processor revision guides.")
 (define-public sof-firmware
   (package
     (name "sof-firmware")
-    (version "1.6.1")
+    (version "1.7")
     (source
      (origin
        (method git-fetch)
        (uri (git-reference
              (url "https://github.com/thesofproject/sof-bin")
-             (commit (string-append "stable-v" version))))
+             (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "1zg5fki8skmmx84p4ws8x2m13bm13fb3kvlhz7zsnmdg6ra06az6"))))
+        (base32 "1fb4rxgg3haxqg2gcm89g7af6v0a0h83c1ar2fyfa8h8pcf7hik7"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
-       (let* ((base
-               (string-append "lib/firmware/intel/sof/v" ,version))
-              (dest "lib/firmware/intel/sof")
-              (tplg
-               (string-append "lib/firmware/intel/sof-tplg-v" ,version))
-              (dest-tplg "lib/firmware/intel/sof-tplg")
-              (fw-file (lambda* (file #:optional subdir)
-                         (list (string-append base "/"
-                                              (or subdir "")
-                                              file "-v" ,version ".ri")
-                               (string-append dest "/" file ".ri"))))
-              (unsigned fw-file)
-              (intel-signed (lambda (file)
-                              (fw-file file "intel-signed/"))))
-         (list (unsigned "sof-bdw")
-               (unsigned "sof-byt")
-               (unsigned "sof-cht")
-               (intel-signed "sof-apl")
-               (intel-signed "sof-cnl")
-               (intel-signed "sof-ehl")
-               (intel-signed "sof-icl")
-               (intel-signed "sof-tgl")
-               (list tplg dest-tplg)))))
+       (list (list (string-append "sof-v" ,version) "lib/firmware/intel/sof")
+             (list (string-append "sof-tplg-v" ,version) "lib/firmware/intel/sof-tplg"))))
     (home-page "https://www.sofproject.org")
     (synopsis "Sound Open Firmware")
     (description "This package contains Linux firmwares and topology files for
