@@ -1,7 +1,7 @@
 #+TITLE: Druix: Drew's (G)uix
 
 Druix is a distribution of GNU/Linux that's focused on usability. It is based
-off of a GNU Guix Channel, amoung other things.
+off of a GNU Guix Channel, among other things.
 
 GNU Guix is a cross-platform package manager and a tool to instantiate and
 manage Unix-like operating systems.
