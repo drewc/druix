@@ -33,7 +33,7 @@
 (define-public lgogdownloader
   (package
     (name "lgogdownloader")
-    (version "3.7")
+    (version "3.9")
     (source
      (origin
        (method git-fetch)
@@ -42,27 +42,27 @@
              (commit (string-append "v" version))))
        (file-name (git-file-name name version))
        (sha256
-        (base32 "02zn4zc9hqym81vbs88x5ayk2xb808jlvfyvn96ksx1ai4b6a4fz"))))
+        (base32 "1hbwgwdm1vn7lkz366q9q8f44sk1pvhgjffndwx49lh3md66xps2"))))
     (build-system cmake-build-system)
     (arguments
      `(#:configure-flags '("-DUSE_QT_GUI=ON")
        #:tests? #f))                    ; no tests
     (inputs
-     `(("boost" ,boost)
-       ("curl" ,curl)
-       ("htmlcxx" ,htmlcxx)
-       ("jsoncpp" ,jsoncpp)
-       ("liboauth" ,liboauth)
-       ("qtbase" ,qtbase-5)
-       ("qtdeclarative" ,qtdeclarative)
-       ("qtwebchannel" ,qtwebchannel)
-       ("qtwebengine" ,qtwebengine)
-       ("rhash" ,rhash)
-       ("tinyxml2" ,tinyxml2)
-       ("zlib" ,zlib)))
+     (list boost
+           curl
+           htmlcxx
+           jsoncpp
+           liboauth
+           qtbase-5
+           qtdeclarative
+           qtwebchannel
+           qtwebengine
+           rhash
+           tinyxml2
+           zlib))
     (native-inputs
-     `(("help2man" ,help2man)
-       ("pkg-config" ,pkg-config)))
+     (list help2man
+           pkg-config))
     (home-page "https://sites.google.com/site/gogdownloader/")
     (synopsis "Downloader for GOG.com files")
     (description "LGOGDownloader is a client for the GOG.com download API,

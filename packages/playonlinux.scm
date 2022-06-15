@@ -38,7 +38,7 @@
 (define-public playonlinux
   (package
     (name "playonlinux")
-    (version "4.3.4")
+    (version "4.4")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -46,7 +46,7 @@
                      (commit version)))
               (sha256
                (base32
-                "0xzdi6x4ksn4jiqa0z8j4rangn0aj1y7kqykan464mp2l585y76v"))))
+                "0jw43fmc298gb7ga2aldcdyrwlhki5k6hc198pl5x987x4gxfg2h"))))
     (build-system python-build-system)
     (arguments
      `(#:python ,python-2
@@ -100,18 +100,18 @@
                         (string-append out "/share/playonlinux/lang/locale")))
              #t)))))
     (inputs
-     `(("cabextract" ,cabextract)
-       ("curl" ,curl)
-       ("gnupg" ,gnupg)
-       ("imagemagick" ,imagemagick)
-       ("jq" ,jq)
-       ("libx11" ,libx11)
-       ("mesa" ,mesa)
-       ("netcat" ,netcat)
-       ("python2-wxpython" ,python2-wxpython)
-       ("wget" ,wget)
-       ("wine" ,wine)
-       ("xrdb" ,xrdb)))
+     (list cabextract
+           curl
+           gnupg
+           imagemagick
+           jq
+           libx11
+           mesa
+           netcat
+           python-wxpython
+           wget
+           wine
+           xrdb))
     (home-page "https://www.playonlinux.com/")
     (synopsis "Easy installer for Windows games")
     (description "PlayOnLinux is a piece of software which allows you to easily
