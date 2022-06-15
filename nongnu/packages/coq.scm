@@ -1,6 +1,7 @@
 ;;; GNU Guix --- Functional package management for GNU
 ;;; Copyright © 2020 Julien Lepiller <julien@lepiller.eu>
-;;; Copyright © 2021 Isaac Young <isyoung@pm.me> 
+;;; Copyright © 2021 Isaac Young <isyoung@pm.me>
+;;; Copyright © 2022 Jonathan Brielmaier <jonathan.brielmaier@web.de>
 ;;;
 ;;; This file is not part of GNU Guix.
 ;;;
@@ -43,6 +44,10 @@
     (arguments
      `(#:phases
        (modify-phases %standard-phases
+         (add-before 'configure 'allow-newer-coq-version
+           (lambda _
+             (substitute* "configure"
+               (("8.14.0") "8.15.1"))))
          (replace 'configure
            (lambda* (#:key outputs #:allow-other-keys)
              (let ((system ,(match (or (%current-target-system) (%current-system))
@@ -68,11 +73,11 @@
     ;; MIPS is not supported.
     (supported-systems (delete "mips64el-linux" %supported-systems))
     (native-inputs
-     `(("ocaml" ,ocaml)
-       ("ocaml-findlib" ,ocaml-findlib); for menhir --suggest-menhirlib
-       ("coq" ,coq)))
+     (list coq
+           ocaml
+           ocaml-findlib)) ; for menhir --suggest-menhirlib
     (inputs
-     `(("menhir" ,ocaml-menhir)))
+     (list ocaml-menhir))
     (home-page "http://compcert.inria.fr")
     (synopsis "Certified C compiler")
     (description "The CompCert project investigates the formal verification of

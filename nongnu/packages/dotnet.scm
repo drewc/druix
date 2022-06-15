@@ -82,10 +82,10 @@ various IDEs and plugins.")
     (license license:expat)))
 
 (define-public dotnet
-  (let ((dotnet-sdk-version "5.0.4"))
+  (let ((dotnet-sdk-version "6.0.5"))
     (package
       (name "dotnet")
-      (version "5.0.201")
+      (version "6.0.300")
       (source
        (origin
          (method url-fetch/tarbomb)
@@ -95,7 +95,7 @@ various IDEs and plugins.")
                          version "-linux-x64.tar.gz"))
          (sha256
           (base32
-           "0hdkwz39ql7madg5dzy50by6q4vyagpwjvjn34ks730yhf3p1xwz"))))
+           "01bhd7amirchcvimbyv07bzvs6i7jydcfwlq9vyfjbf3ln88qk0x"))))
       (build-system binary-build-system)
       (arguments
        `(#:patchelf-plan
@@ -193,10 +193,10 @@ building different types of applications.")
       (license license:expat))))
 
 (define-public dotnet-core-3.1
-  (let ((dotnet-sdk-version "3.1.13"))
+  (let ((dotnet-sdk-version "3.1.25"))
     (package
       (name "dotnet")
-      (version "3.1.113")
+      (version "3.1.419")
       (source
        (origin
          (method url-fetch/tarbomb)
@@ -206,7 +206,7 @@ building different types of applications.")
                          version "-linux-x64.tar.gz"))
          (sha256
           (base32
-           "0dm4kxpq235yfxzf41m1iyfg5avlxdic0nwr865g5wyzc6kz9nhw"))))
+           "0wg91y5czimcrcv4rfvza9qc1n7l29szbs9qnmr437175zl10ksi"))))
       (build-system binary-build-system)
       (arguments
        `(#:patchelf-plan

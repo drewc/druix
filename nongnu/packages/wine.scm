@@ -36,7 +36,7 @@
 (define-public winetricks
   (package
     (name "winetricks")
-    (version "20210206")
+    (version "20220411")
     (source (origin
               (method git-fetch)
               (uri (git-reference
@@ -45,7 +45,7 @@
               (file-name (git-file-name name version))
               (sha256
                (base32
-                "0x2ykd6krk0fric45yl4gcc8cdv6j206l62rc9klw0rxfv12hz5n"))))
+                "09bv6wsm3y9p6jhlcmnjlnczdyr996b2mvxg4fbvlqa3fv9gac8n"))))
     (build-system gnu-build-system)
     (inputs
      `(("cabextract" ,cabextract)
@@ -157,7 +157,7 @@ Use @command{setup_dxvk} to install the required libraries to a Wine prefix.")
 (define-public dxvk-next
   (package
     (name "dxvk")
-    (version "1.9")
+    (version "1.10.1")
     (home-page "https://github.com/doitsujin/dxvk/")
     (source (origin
               (method url-fetch)
@@ -166,7 +166,7 @@ Use @command{setup_dxvk} to install the required libraries to a Wine prefix.")
                     version "/dxvk-" version ".tar.gz") )
               (sha256
                (base32
-                "1vd64525c6qwvxhdsqp7icbf7zsfdcyj125p0hm1k1rqg3w6hf23"))))
+                "1ah7nci49ipaj7z7zac4dqbrxq1ic3zyky42kkid8wqarf198d6w"))))
     (build-system copy-build-system)
     (arguments
      `(#:install-plan
