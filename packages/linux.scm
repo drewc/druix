@@ -64,13 +64,13 @@
      "The unmodified Linux kernel, including nonfree blobs, for running Guix
 System on hardware which requires nonfree software to function.")))
 
-(define-public linux-5.17
-  (corrupt-linux linux-libre-5.17 "5.17.13"
-                 "0lzgifk26s0bbrad0k9ngbc9nj5g4jyqmf68mhd01nbbl44gsiza"))
+(define-public linux-5.18
+  (corrupt-linux linux-libre-5.18 "5.18.10"
+                 "1qyyfdfp8qn8a6brgly0h72jvz9s0wp2pjyrcpknzvmqvc0kv7pr"))
 
 (define-public linux-5.15
-  (corrupt-linux linux-libre-5.15 "5.15.45"
-                 "0m47ilgvg10a9r7zzf7fvyvamggj13j99cnfy1p06rkwjxyhsfdj"))
+  (corrupt-linux linux-libre-5.15 "5.15.53"
+                 "01vvyw6sjkkjs7l4cy04yv19d9f3wmpy5gqfm763y7q58dr73apk"))
 
 (define-public linux-5.10
   (corrupt-linux linux-libre-5.10 "5.10.113"
@@ -92,7 +92,7 @@ System on hardware which requires nonfree software to function.")))
   (corrupt-linux linux-libre-4.9 "4.9.282"
                  "059fin4si93ya13xy831w84q496ksxidpd3kyw38918sfy4p6wk7"))
 
-(define-public linux linux-5.17)
+(define-public linux linux-5.18)
 ;; linux-lts points to the *newest* released long-term support version.
 (define-public linux-lts linux-5.15)
 
@@ -191,7 +191,7 @@ advanced 3D.")))
 (define-public raspberrypi-firmware
 (package
   (name "raspberrypi-firmware")
-  (version "1.20220120")
+  (version "1.20220331")
   (source (origin
             (method git-fetch)
             (uri (git-reference
@@ -211,7 +211,7 @@ advanced 3D.")))
             (file-name (git-file-name name version))
             (sha256
              (base32
-              "0s75fw4n83bkh78xh5rdgpiyp1bkvv1v18pawl4cs9v4gjkn6pi2"))))
+              "1hd1vkghkgdlmw04fap28f68nsf7d7i8dq6h9r4xa0h9y4f6j6ag"))))
     (arguments
      '(#:install-plan
        '(("boot/" "."))))
@@ -706,9 +706,7 @@ releases.")
          "1b1qjwxjk4y91l3iz157kms8601n0mmiik32cs6w9b1q4sl4pxx9"))))
     (build-system trivial-build-system)
     (arguments
-     `(#:modules ((guix build utils)
-                  (ice-9 rdelim)
-                  (ice-9 regex))
+     `(#:modules ((guix build utils))
        #:builder
        (begin
          (use-modules (guix build utils)
