@@ -34,83 +34,20 @@ Because of that they require a "non-free" linux kernel and some binary blobs
 that Guix refuses to include (for good reason!). My priorities and philosophies
 somewhat differ and my freedom is my ability to choose "non-free" hardware :).
 
-I want a single channel AKA monorepo even though I am including external repos.
-That's where a subtree comes into play.
+I want a single channel AKA monorepo. I used to have nonguix as a subtree but
+guix now has a way to declare dependencies.
 
-** Update the subtree!
+"Channel authors may decide to augment a package collection provided by other channels. They can declare their channel to be dependent on other channels in a meta-data file .guix-channel, which is to be placed in the root of the channel repository. " --[[https://guix.gnu.org/manual/en/html_node/Declaring-Channel-Dependencies.html][guix.gnu.org]]
 
-We've already got a repo for the subtrees.
-
-Update that repo.
-
-#+begin_src shell
-cd ~/me/guix/src/
-cd nonguix;
-git pull;
-git subtree split --prefix=nonguix --branch=nonguix
-git subtree split --prefix=nongnu --branch=nongnu
-cd ..
+#+begin_src scheme :tangle ../.guix-channel
+  (channel
+   (version 0.42)
+   (dependencies
+    (channel
+     (name 'nonguix)
+     (url "https://gitlab.com/nonguix/nonguix"))))
 #+end_src
 
-#+begin_src shell
-cd druix
-git pull;
-git subtree pull --prefix nonguix ../nonguix/ nonguix --squash
-git subtree pull --prefix nongnu ../nonguix/ nongnu --squash
-#+end_src
-
-** In the beginning
-
-*** Clone the upstream repo
-
-#+begin_src shell
-cd ~/me/guix/src
-git clone git@gitlab.com:nonguix/nonguix.git
-#+end_src
-
-*** Split the two subtrees
-
-#+begin_src shell
-cd nonguix;
-git subtree split --prefix=nonguix --branch=nonguix
-git subtree split --prefix=nongnu --branch=nongnu
-#+end_src
-
-*** Also add the README as another branch
-
-Change README.org into nonguix.org and we'll stick it in a doc/ folder.
-
-#+begin_src shell
-git branch --track README
-rm -r .giti* .gu* .d* COPYING news.txt nong*
-git mv README.org nonguix.org
-git commit -m "Remove all but README->nonguix.org"
-#+end_src
-
-*** Make sure there's a commit in ~druix~
-
-#+begin_src shell
-touch .gitignore
-git add .gitignore
-git commit -m "add empty .gitignore to allow using git-subtree"
-#+end_src
-
-*** Add the subtrees to Druix
-
-
-#+begin_src shell
-git subtree add --prefix nonguix ../nonguix/ nonguix --squash
-git subtree add --prefix nongnu ../nonguix/ nongnu --squash
-git subtree add --prefix doc/ ../nonguix/ README --squash
-
-#+end_src
-
-*** Add this log to the now ~nonguix.org~
-
-#+begin_src shell
-git add README.org doc/nonguix.org
-
-#+end_src
 * Warning
 
 This channel does not endorse any non-free application. We believe it is
