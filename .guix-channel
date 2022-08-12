@@ -1,5 +1,5 @@
 (channel
- (version 0.42)
+ (version 0)
  (dependencies
   (channel
    (name 'nonguix)
