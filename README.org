@@ -1,7 +1,7 @@
 #+TITLE: Druix: Drew's (G)uix
 
-Druix is a distribution of GNU/Linux that's focused on usability. It is based
-off of a GNU Guix Channel, among other things.
+Druix is a GNU Guix Channel, among other things. It's based off of how I use
+Guix personally.
 
 GNU Guix is a cross-platform package manager and a tool to instantiate and
 manage Unix-like operating systems.
@@ -30,6 +30,17 @@ ie:
 guix install -L ~/me/guix/src/druix/ gambit-c-unstable
 #+end_src
 
+
+* Packages
+
+This is what really matters, non? :)
+
+-  gerbil-unstable ::
+-  [[file:doc/Gitea.org][gitea]] :: Gitea - Git with a cup of tea. A painless self-hosted Git service.
+
+* Services
+
+-  [[file:doc/Gitea.org][gitea]] :: Gitea - Git with a cup of tea. A painless self-hosted Git service.
 * NonGuix/NonGNU
 
 #+begin_quote

@@ -1,0 +1,224 @@
+#+TITLE: Gitea: A nice standalone git website thingie
+
+I want a nice interface for my own git archives stored on my NAS. I've got minicomputers acting as local servers so can serve it.
+
+* Testing
+
+#+begin_src sh
+guix install -L ~/me/src/druix/ gitea
+#+end_src
+
+* Service and config
+
+#+begin_src scheme :tangle ../druix/services/gitea.scm
+  (define-module (druix services gitea)
+    #:use-module (gnu services)
+    #:use-module (gnu services base)
+    #:use-module (gnu services admin)
+    #:use-module (gnu system shadow)
+    #:use-module (gnu packages admin)
+    #:use-module (gnu services shepherd)
+    #:use-module (druix packages gitea)
+    #:use-module (guix gexp)
+    #:use-module (guix records)
+    #:use-module (ice-9 match)
+    #:export (gitea-configuration
+              gitea-configuation?
+              gitea-service-type))
+  (display "Gitea service\n\n")
+
+  (define-record-type* <gitea-configuration>
+    gitea-configuration make-gitea-configuration
+    gitea-configuation?
+    (gitea gitea-configuration-gitea      ;file-like
+           (default gitea))
+    (work-path gitea-work-path
+               (default "/var/lib/gitea"))
+    (custom-path gitea-custom-path
+                 (default #t))
+    (config gitea-config-path
+            (default #t))
+    (homedir gitea-user-home
+             (default #t))
+    (pid gitea-pid
+         (default "/var/run/gitea.pid"))
+    (port gitea-web-port
+          (default 3000))
+    (extra-options gitea-configuration-options ;list of strings
+                   (default '())))
+
+  (define gitea-activation
+    (match-lambda
+      (($ <gitea-configuration>
+          gitea work-path custom-path conf home pid port extra-options)
+       #~(begin
+           (use-modules (guix build utils))
+
+           (let ((user (getpwnam "gitea")))
+             (mkdir-p #$work-path)
+             (chown #$work-path (passwd:uid user) (passwd:gid user))
+             )))))
+
+  (define %gitea-accounts
+    (list (user-group (name "gitea") (system? #t))
+          (user-account
+           (name "gitea")
+           (group "gitea")
+           (system? #t)
+           (comment "gitea server user")
+           (home-directory "/var/lib/gitea")
+           (shell "/bin/sh"))))
+  ;(file-append shadow "/sbin/nologin")
+
+  (define gitea-shepherd-service
+    (match-lambda
+      (($ <gitea-configuration>
+          gitea work-path custom-path config home pid port extra-options)
+       (let* ((kustom
+               (or (if (string? custom-path) custom-path #f)
+                   (if (and custom-path work-path)
+                       (string-append work-path "/custom")
+                       #f)))
+              (konf (or (if (string? config) config #f)
+                        (if (and config kustom)
+                            (string-append kustom "/conf/app.ini")
+                            #f)))
+              (homed (or (if (string? home) home #f)
+                         (if work-path work-path
+                             #f))))
+         (format #t "here")
+         (list (shepherd-service
+                (provision '(gitea))
+                (documentation "Run `gitea web` as a daemon")
+                (requirement '(networking))
+                (start #~(make-forkexec-constructor
+                          (list
+                          ; "/usr/bin/env"
+                          ; (string-append "HOME=" #$homed)
+                           ;; "echo"
+                           (string-append #$gitea "/bin/gitea")
+                                          ;"web"
+                           #$@(if work-path
+                                  #~("--work-path" #$work-path)
+                                  #~())
+                           #$@(if konf
+                                  #~("--config" #$konf)
+                                  #~())
+                           #$@(if kustom
+                                  #~("--custom-path" #$kustom)
+                                  #~())
+                           #$@(if pid
+                                  #~("--pid" #$pid)
+                                  #~())
+                           #$@(if port
+                                  #~("--port" #$port)
+                                  #~())
+                           #$@extra-options)
+                          #:user "gitea"
+                          #:log-file (string-append "/var/log" "/gitae.log")))
+                (stop #~(make-kill-destructor))))))))
+
+  (define gitea-service-type
+    (service-type (name 'gitea)
+                  (extensions
+                   (list (service-extension shepherd-root-service-type
+                                            gitea-shepherd-service)
+                         (service-extension activation-service-type
+                                            gitea-activation)
+                         (service-extension account-service-type
+                                            (const %gitea-accounts))))
+                                          ;(compose concatenate)
+                  (default-value
+                    (gitea-configuration))
+                  (description "Run the Gitea Web server.")))
+
+#+end_src
+
+* The ~gitea~ package
+
+Stolen from here: [[https://git.genenetwork.org/guix-bioinformatics/]]
+
+#+begin_src scheme :tangle ../druix/packages/gitea.scm
+    (define-module (druix packages gitea)
+      #:use-module ((guix licenses) #:prefix license:)
+      #:use-module (guix packages)
+      #:use-module (guix download)
+      #:use-module (guix gexp)
+      #:use-module (guix build-system go)
+      #:use-module (gnu packages bash)
+      #:use-module (gnu packages node)
+      #:use-module (gnu packages version-control))
+
+  (define-public gitea
+    (package
+      (name "gitea")
+      (version "1.16.9")
+      (source (origin
+                (method url-fetch)
+                (uri (string-append "https://github.com/go-gitea/gitea/releases"
+                                    "/download/v" version
+                                    "/gitea-src-" version ".tar.gz"))
+                (sha256
+                 (base32 "1q9hbg6fwi9gq8dwa9hi1giqz10h9y0xi0h03gjz0jci5i8xh4rg"))))
+      (build-system go-build-system)
+      (arguments
+       `(#:install-source? #f
+         #:phases
+         (modify-phases %standard-phases
+           (add-after 'patch-source-shebangs 'unpatch-example-shebangs
+             ;; If we don't do this then git repos created with this version of
+             ;; gitea will use the build environment's bash for the different
+             ;; git repo hooks.
+             (lambda _
+               (substitute*
+                 (find-files "src/integrations/gitea-repositories-meta"
+                             "(\\.sample|gitea|(post|pre)-receive|update)")
+                 (("#!/gnu/store/.*/bin/bash") "#!/bin/bash")
+                 (("#!/gnu/store/.*/bin/sh") "#!/bin/sh"))))
+           (add-before 'build 'prepare-build
+             (lambda _
+               (setenv "TAGS" "bindata sqlite sqlite_unlock_notify")
+               (setenv "GITEA_WORK_DIR" "/var/lib/gitea")))
+           (replace 'build
+             (lambda _
+               (with-directory-excursion "src"
+                 (invoke "make" "build")
+                 (invoke "make" "generate-manpage"))))
+           (replace 'check
+             (lambda* (#:key tests? #:allow-other-keys)
+               (when tests?
+                 (unsetenv "GITEA_WORK_DIR")
+                 (with-directory-excursion "src"
+                   (invoke "make" "test-backend")
+                   ;; Gitea requires git with lfs support to run tests.
+                   ;(invoke "make" "test-sqlite")
+                   (invoke "make" "test-sqlite-migration")))))
+           (replace 'install
+             (lambda* (#:key outputs #:allow-other-keys)
+               (let ((out (assoc-ref outputs "out")))
+                 (with-directory-excursion "src"
+                   (invoke "make" "install")
+                   (install-file "man/man1/gitea.1.gz"
+                                 (string-append out "/share/man/man1"))))))
+           (add-after 'install 'wrap-program
+             (lambda* (#:key outputs inputs #:allow-other-keys)
+               (let* ((out (assoc-ref outputs "out"))
+                      (bin (string-append out "/bin/gitea")))
+                 (wrap-program bin
+                   `("PATH" ":" prefix
+                     (,(dirname (search-input-file inputs "/bin/git")))))))))))
+      ;(native-inputs
+      ; (list node-lts))
+      (inputs
+       (list bash-minimal
+             git))
+      (home-page "https://gitea.io/")
+      (synopsis "Self-hosted git service")
+      (description "Gitea is an open-source forge software package for hosting
+  software development version control using Git as well as other collaborative
+  features like bug tracking, wikis and code review.")
+      (properties
+        '((release-monitoring-url . "https://github.com/go-gitea/gitea/releases")))
+      (license license:expat)))
+
+#+end_src
