@@ -80,9 +80,9 @@
               (requirement '(networking))
               (start #~(make-forkexec-constructor
                         (list
-                        ; "/usr/bin/env"
-                        ; (string-append "HOME=" #$homed)
-                         ;; "echo"
+                         "/usr/bin/env"
+                                        ;"echo"
+                         (string-append "HOME=" #$homed)
                          (string-append #$gitea "/bin/gitea")
                                         ;"web"
                          #$@(if work-path
@@ -94,15 +94,16 @@
                          #$@(if kustom
                                 #~("--custom-path" #$kustom)
                                 #~())
-                         #$@(if pid
-                                #~("--pid" #$pid)
-                                #~())
-                         #$@(if port
-                                #~("--port" #$port)
-                                #~())
-                         #$@extra-options)
+                         ;; #$@(if pid
+                         ;;        #~("--pid" #$pid)
+                         ;;        #~())
+                         ;; #$@(if port
+                         ;;        #~("--port" #$port)
+                         ;;        #~())
+                         #$@extra-options
+                         )
                         #:user "gitea"
-                        #:log-file (string-append "/var/log" "/gitae.log")))
+                        #:log-file (string-append "/var/log" "/gitea.log")))
               (stop #~(make-kill-destructor))))))))
 
 (define gitea-service-type
