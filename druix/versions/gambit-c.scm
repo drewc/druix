@@ -11,6 +11,94 @@
       #:patch
       4
       #:revision
+      93
+      #:ymd
+      20220920
+      #:hms
+      162911
+      #:sha256
+      "0wc8dx3ny3zpdfbgfrb29gk2s4yg1wrkwyv2hblb5d3pa2l13zw9"
+      #:repo
+      "https://github.com/gambit/gambit.git"
+      #:commit
+      "176cff999b1e0bb8bf7f84ea2a636921529a0f72")
+
+    (make <druix-version-git>
+      #:name
+      "gambit-c"
+      #:major
+      0
+      #:minor
+      0
+      #:patch
+      #f
+      #:revision
+      63
+      #:ymd
+      20220801
+      #:hms
+      95721
+      #:sha256
+      "1c6ycdxhdsbdn3v3fy31ygzyllm77wrq9xffj9fxsi6ygy7aykqp"
+      #:repo
+      "https://github.com/vyzo/gerbil.git"
+      #:commit
+      "8e114a367c9ad81c4faa9f544a4a37f9fc9bd0e3")
+
+    (make <druix-version-git>
+      #:name
+      "gambit-c"
+      #:major
+      4
+      #:minor
+      9
+      #:patch
+      4
+      #:revision
+      93
+      #:ymd
+      20220920
+      #:hms
+      162911
+      #:sha256
+      "0wc8dx3ny3zpdfbgfrb29gk2s4yg1wrkwyv2hblb5d3pa2l13zw9"
+      #:repo
+      "https://github.com/gambit/gambit.git"
+      #:commit
+      "176cff999b1e0bb8bf7f84ea2a636921529a0f72")
+
+    (make <druix-version-git>
+      #:name
+      "gambit-c"
+      #:major
+      4
+      #:minor
+      9
+      #:patch
+      4
+      #:revision
+      90
+      #:ymd
+      20220910
+      #:hms
+      130555
+      #:sha256
+      "1idfw1ah2df1p3dan0gkgq54bfigay6lvq192m6p3fmv91j40kh1"
+      #:repo
+      "https://github.com/gambit/gambit.git"
+      #:commit
+      "758cd4ecdaee936f26bc6bd5ec39dcbd8c06bfc3")
+
+    (make <druix-version-git>
+      #:name
+      "gambit-c"
+      #:major
+      4
+      #:minor
+      9
+      #:patch
+      4
+      #:revision
       4
       #:ymd
       20220109

@@ -25,7 +25,7 @@ guix install -L ~/me/src/druix/ gitea
     #:export (gitea-configuration
               gitea-configuation?
               gitea-service-type))
-  (display "Gitea service\n\n")
+  ;; (display "Gitea service\n\n")
 
   (define-record-type* <gitea-configuration>
     gitea-configuration make-gitea-configuration
@@ -68,7 +68,6 @@ guix install -L ~/me/src/druix/ gitea
            (comment "gitea server user")
            (home-directory "/var/lib/gitea")
            (shell "/bin/sh"))))
-  ;(file-append shadow "/sbin/nologin")
 
   (define gitea-shepherd-service
     (match-lambda
@@ -86,7 +85,7 @@ guix install -L ~/me/src/druix/ gitea
               (homed (or (if (string? home) home #f)
                          (if work-path work-path
                              #f))))
-         (format #t "here")
+         ;; (format #t "here")
          (list (shepherd-service
                 (provision '(gitea))
                 (documentation "Run `gitea web` as a daemon")
@@ -94,8 +93,8 @@ guix install -L ~/me/src/druix/ gitea
                 (start #~(make-forkexec-constructor
                           (list
                            "/usr/bin/env"
-                                          ;"echo"
                            (string-append "HOME=" #$homed)
+                                          ;"echo"
                            (string-append #$gitea "/bin/gitea")
                                           ;"web"
                            #$@(if work-path
@@ -104,6 +103,7 @@ guix install -L ~/me/src/druix/ gitea
                            #$@(if konf
                                   #~("--config" #$konf)
                                   #~())
+
                            #$@(if kustom
                                   #~("--custom-path" #$kustom)
                                   #~())
@@ -140,7 +140,7 @@ guix install -L ~/me/src/druix/ gitea
 Stolen from here: [[https://git.genenetwork.org/guix-bioinformatics/]]
 
 #+begin_src scheme :tangle ../druix/packages/gitea.scm
-    (define-module (druix packages gitea)
+  (define-module (druix packages gitea)
       #:use-module ((guix licenses) #:prefix license:)
       #:use-module (guix packages)
       #:use-module (guix download)

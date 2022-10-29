@@ -35,9 +35,6 @@ mixed.")
     (license (list lgpl2.1+ asl2.0))))
 #+end_src
 
-In the upstream, as of now ([2021-06-05 Sat]), there is a [[https://guix.gnu.org/en/packages/gambit-c-4.9.3/][gambit-c 4.9.3]]
-package. We'll inherit from that to create a ~gambit-c-unstable 4.9.3~ package.
-
 * Bootstrap: a ~native-input~ to build itself with itself.
 :PROPERTIES:
 :CUSTOM_ID: gambitCBootstrap
@@ -81,18 +78,21 @@ what the ~make bootstrap~ does if the ~.git~ still exists.
 * HEAD, bleedin' edge, ~gambit-unstable~
 
 We've got a way to get the version, commit, and sha256 from the repo using
-[[file:~/me/guix/src/druix/doc/versions.org][(druix versions)]].
+[[file:~/src/druix/doc/versions.org][(druix versions)]].
 
 #+begin_src shell
-guix repl -L ~/me/guix/src/druix/
+  ~/me/src/druix/bin/update-gambit-version
 #+end_src
-#+begin_src scheme
-(use-modules ((druix versions) #:prefix v:))
-(v:ensure-druix-versions
- 'gambit-c v:<druix-version-git>
- #:repo "https://github.com/gambit/gambit.git")
 
-;; => "/home/drewc/me/guix/src/druix/druix/versions/gambit-c.scm"
+#+begin_src scheme :tangle ../../bin/update-gambit-version :shebang #!/usr/bin/env -S guix repl --
+  !#
+  (add-to-load-path (string-append (dirname (current-filename)) "/.."))
+  (use-modules ((druix versions) #:prefix v:))
+  (display (v:ensure-druix-versions
+   'gambit-c v:<druix-version-git>
+   #:repo "https://github.com/gambit/gambit.git"))
+
+  ;; => "/home/drewc/me/guix/src/druix/druix/versions/gambit-c.scm"
 #+end_src
 
 ** ~./configure~, the first of three

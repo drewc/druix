@@ -12,7 +12,7 @@
   #:export (gitea-configuration
             gitea-configuation?
             gitea-service-type))
-(display "Gitea service\n\n")
+;; (display "Gitea service\n\n")
 
 (define-record-type* <gitea-configuration>
   gitea-configuration make-gitea-configuration
@@ -55,7 +55,6 @@
          (comment "gitea server user")
          (home-directory "/var/lib/gitea")
          (shell "/bin/sh"))))
-;(file-append shadow "/sbin/nologin")
 
 (define gitea-shepherd-service
   (match-lambda
@@ -73,7 +72,7 @@
             (homed (or (if (string? home) home #f)
                        (if work-path work-path
                            #f))))
-       (format #t "here")
+       ;; (format #t "here")
        (list (shepherd-service
               (provision '(gitea))
               (documentation "Run `gitea web` as a daemon")
@@ -81,8 +80,8 @@
               (start #~(make-forkexec-constructor
                         (list
                          "/usr/bin/env"
-                                        ;"echo"
                          (string-append "HOME=" #$homed)
+                                        ;"echo"
                          (string-append #$gitea "/bin/gitea")
                                         ;"web"
                          #$@(if work-path
@@ -91,6 +90,7 @@
                          #$@(if konf
                                 #~("--config" #$konf)
                                 #~())
+
                          #$@(if kustom
                                 #~("--custom-path" #$kustom)
                                 #~())

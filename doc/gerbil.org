@@ -112,14 +112,17 @@ time compilation and compiled macros.")
 The ~(druix versions)~ module has an ~ensure-druix-versions~ that grabs things
 from upstream and makes a version that can be packaged.
 
-#+begin_src scheme
-(use-modules ((druix versions) #:prefix v:))
-(v:ensure-druix-versions
- 'gerbil v:<druix-version-git>
- #:repo "https://github.com/vyzo/gerbil.git")
+#+begin_src scheme :tangle ../bin/update-gerbil-version :shebang #!/usr/bin/env -S guix repl --
+  !#
+  (add-to-load-path (string-append (dirname (current-filename)) "/.."))
+  (use-modules ((druix versions) #:prefix v:))
+  (display (v:ensure-druix-versions
+   'gambit-c v:<druix-version-git>
+   #:repo "https://github.com/vyzo/gerbil.git"))
 
-;; => "/home/drewc/me/guix/src/druix/druix/versions/gerbil.scm"
 #+end_src
+
+
 
 It makes/updates a list of versions stored in a file.
 
