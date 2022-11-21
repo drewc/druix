@@ -89,6 +89,7 @@
           (lambda*
            (#:key inputs #:allow-other-keys)
            (setenv "HOME" (getcwd))
+           (setenv "CC" (file-append gcc-toolchain "bin/gcc"))
              (invoke
               ;; The build script needs a tty or it'll crash on an ioctl
               ;; trying to find the width of the terminal it's running on.
