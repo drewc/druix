@@ -36,7 +36,7 @@
 (define-public s3fs
   (package
     (name "s3fs")
-    (version "1.90")
+    (version "1.92")
     (source
       (origin
         (method git-fetch)
@@ -45,7 +45,7 @@
                (commit (string-append "v" version))))
         (file-name (git-file-name name version))
         (sha256
-         (base32 "1iyjn7w4nrrii24icmp0zfk2bjr9d7byc42ks578fz0gv4shijmm"))))
+         (base32 "0cqkr6vda0p8lwxh96wgpmpjz3h0y8b7m5vf20kighh16b2aabh9"))))
     (build-system gnu-build-system)
     (arguments
      '(#:tests? #f          ; Tests require /dev/fuse
