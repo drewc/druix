@@ -1,0 +1,4 @@
+#+TITLE: Notes and Logs and Docs and Wiki-like pages
+
+[[id:99fc01a4-a193-454b-835a-e012a5ea660b][debootstrap]]
+[[id:5304d273-ba4c-45c2-8a83-281ff0c0e66d][Incus]]

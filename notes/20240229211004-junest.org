@@ -1,0 +1,57 @@
+:PROPERTIES:
+:ID:       29f49f26-adad-4e0d-b738-fae8d71d63f3
+:END:
+#+title: JuNest
+
+The lightweight Arch Linux based distro that runs, without root
+privileges, on top of any other Linux distro.
+--https://github.com/fsquillace/junest
+
+Down at the very bottom there's [[https://github.com/fsquillace/junest?tab=readme-ov-file#chroot-based][a chroot based]] solution. That's what I
+figure will work for [[id:5304d273-ba4c-45c2-8a83-281ff0c0e66d][Incus]].
+
+#+begin_src sh
+ git clone https://github.com/fsquillace/junest.git ~/.local/share/junest
+ export PATH=~/.local/share/junest/bin:$PATH
+ PATH=~/.local/share/junest/bin:$PATH junest setup
+#+end_src
+
+#+begin_quote
+Optionally you want to use the wrappers to run commands installed in JuNest directly from host:
+export PATH="$PATH:~/.junest/usr/bin_wrappers"
+#+end_quote
+
+
+#+begin_src sh
+  guix install gcc-toolchain
+#+end_src
+
+#+begin_src sh
+  rms() {
+    echo $1  | sed 's|^/||'
+  }
+
+  _HOME="`echo  $HOME  | sed 's|^/||'`"
+  RU="/run/user/$(${ID:-`which id`} -u)"
+  _RU="$(echo  $RU  | sed 's|^/||')"
+
+  sudo  bash <<EOF
+  cd /root/.junest/
+  mount -t proc /proc proc/
+  mount --rbind /sys sys/
+  mount --rbind /dev dev/
+  mount --rbind /dev/pts dev/pts
+  mkdir -p "$_HOME"
+  mount --rbind "$HOME" "$_HOME"
+  echo $HOME to $_HOME
+  echo $RU to $_RU
+  mkdir -p "$_RU"
+  mount --rbind "$RU" "$_RU"
+  cp /etc/resolv.conf etc/resolv.conf
+  echo "root:1000000:1000000000" | tee -a etc/subuid etc/subgid
+  EOF
+
+  env -i `which chroot` /root/.junest/ /usr/bin/bash -l <<'EOF'
+  setsid --fork incusd > /var/log/incus/incusd 2>&1 < /dev/null
+
+#+end_src

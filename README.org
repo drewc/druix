@@ -1,7 +1,7 @@
 #+TITLE: Druix: Drew's (G)uix
 
-Druix is a GNU Guix Channel, among other things. It's based off of how I use
-Guix personally.
+Druix is a GNU Guix Channel, among other things. It's based off of how
+I, =drewc=, use Guix both personally and on a business scale.
 
 GNU Guix is a cross-platform package manager and a tool to instantiate and
 manage Unix-like operating systems.
@@ -16,10 +16,10 @@ against recommending nonfree software, and to avoid any unnecessary hostility.
 It's a guix channel. Add this to ~~/.config/guix/channels.scm~.
 
 #+begin_src scheme
-(channel
- (name 'druix)
- (url "https://github.com/drewc/druix.git")
- (branch "main"))
+  (channel
+   (name 'druix)
+   (url "https://github.com/drewc/druix.git")
+   (branch "main"))
 #+end_src
 
 For hacking, clone the repo and ~-L~ it.
@@ -30,20 +30,32 @@ ie:
 guix install -L ~/me/guix/src/druix/ gambit-c-unstable
 #+end_src
 
+* dot Guix Channel
 
-* Packages
+#+begin_src scheme :tangle .guix-channel
+   (channel
+    (version 1)
+    (directory "packages")
+    (dependencies
+     (channel
+      (name nonguix)
+      (url "https://gitlab.com/nonguix/nonguix"))))
+
+#+end_src
+
+* Package modules
 
 This is what really matters, non? :)
 
--  gerbil-unstable ::
--  [[file:doc/Gitea.org][gitea]] :: Gitea - Git with a cup of tea. A painless self-hosted Git service.
+All of the [[info:guix#Package Modules in a Sub-directory][Package Modules]] are in a [[file:packages/README.org][Sub-Directory]].
 
 * Services
 
 -  [[file:doc/Gitea.org][gitea]] :: Gitea - Git with a cup of tea. A painless self-hosted Git service.
+  
 * NonGuix/NonGNU
 
-#+begin_quote
+    #+begin_quote 
 Nonguix is a software repository for the GNU Guix package manager, which
 packages some software which cannot be included in the official distribution for
 ethical or policy-related reasons.

@@ -1,0 +1,699 @@
+:PROPERTIES:
+:ID:       5304d273-ba4c-45c2-8a83-281ff0c0e66d
+:END:
+#+title: Incus
+
+What is Incus?
+
+=Incus= is a next generation system container and virtual machine
+manager. It used to be =LXD=, but that project was co-opted by
+Canonical AFAICT.
+
+The Incus project was created by Aleksa Sarai as a community driven
+alternative to Canonical's LXD.  Today, it's led and maintained by
+much of the same people that once created LXD.
+
+I've tried a few things! Now onto 
+
+
+* Build under Guix?
+
+#+begin_src sh
+  guix install git
+  # git clone https://github.com/lxc/incus
+  # This has the deps in a ./vendor/ folder
+  wget https://github.com/lxc/incus/releases/download/v0.6.0/incus-0.6.tar.xz
+  tar --xz -xvf ./incus-0.6.tar.xz
+  cd incus-0.6
+  mkdir Go
+  export GOPATH="`pwd`/Go"
+  sed -i 's/PKG_CONFIG_PATH="$(RAFT_PATH)"/PKG_CONFIG_PATH="$(PKG_CONFIG_PATH):$(RAFT_PATH)"/' Makefile
+   guix shell gcc-toolchain make go autobuild autoconf automake libtool libcap eudev acl attr squashfs-tools btrfs-progs dnsmasq nftables bridge-utils
+
+   guix shell go autobuild make gcc-toolchain \
+        autoconf automake libuv libtool libcap pkg-config go libcap eudev \
+       acl attr squashfs-tools btrfs-progs dnsmasq nftables bridge-utils pkg-config \
+       sqlite libuv
+   sed -i 's/-Wmissing-include-dirs//' ./vendor/cowsql/configure.ac
+   #cd "./vendor/cowsql" &&  autoreconf -i && cd -
+   make deps
+   
+  export CGO_CFLAGS="-I`pwd`/vendor/raft/include/ -I`pwd`/vendor/cowsql/include/"
+  export CGO_LDFLAGS="-L`pwd`/vendor/raft/.libs -L`pwd`/vendor/cowsql/.libs/"
+  export LD_LIBRARY_PATH="`pwd`/vendor/raft/.libs/:`pwd`/vendor/cowsql/.libs/"
+  export CGO_LDFLAGS_ALLOW="(-Wl,-wrap,pthread_create)|(-Wl,-z,now)"
+#+end_src
+* Making a package
+
+After a quick jaunt at copying we need to copy and create a lot more.
+
+** Dependencies
+
+* libraft fork
+
+#+begin_quote
+This library is a fork of Canonical's Raft implementation, which was
+originally written by this library's author himself while working at
+Canonical.
+
+It is a fully compatible drop-in replacement of Canonical's version,
+at least up to v0.18.0.
+#+end_quote
+
+#+begin_src scheme :tangle ../packages/dru/packages/cluster.scm
+  (define-module (dru packages cluster) 
+    ;#:use-module ((gnu packages virtualization) #:prefix v:)
+    #:use-module (guix packages)
+    #:use-module (guix git-download)
+   #:use-module (gnu packages pkg-config)
+  #:use-module (gnu packages build-tools)
+    #:use-module (guix build-system gnu)
+    #:use-module ((guix licenses) #:prefix license:)
+    ;#:use-module (gnu packages acl)
+    ;#:use-module (gnu packages attr)
+   #:use-module (gnu packages autotools)
+   ; #:use-module (gnu packages cluster)
+   ; #:use-module (gnu packages linux)
+   ; #:use-module (gnu packages bash)
+   ; #:use-module (gnu packages rsync)
+   ; #:use-module (gnu packages base)
+   ; #:use-module (gnu packages sqlite)
+   #:use-module (gnu packages compression)
+   ; #:use-module (gnu packages dns)
+  #:use-module (gnu packages libevent)
+
+  #:use-module (gnu packages sqlite)
+  #:use-module (gnu packages gettext)
+      )
+    (define-public libraft
+    (package
+      (name "libraft")
+      (version "0.22.0")
+      (home-page "https://github.com/cowsql/raft")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference (url home-page)
+                                    (commit (string-append "v" version))))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32 "1qsk18xi6kdwgc1apd84d1kz4hmq7kpf8a8kgpjyj2byiq7hzpci"))))
+      (arguments '(#:configure-flags '("--enable-uv")
+                   #:phases
+                   (modify-phases %standard-phases
+                     (add-after 'unpack 'disable-failing-tests
+                       (lambda _
+                         (substitute* "Makefile.am"
+                           ((".*test_uv_append.c.*") "")
+                           ((".*test_uv_tcp_connect.c.*") ""))
+                         #t)))))
+      (inputs
+       (list libuv lz4))
+      (native-inputs
+       `(("autoconf" ,autoconf)
+         ("automake" ,automake)
+         ("gettext" ,gettext-minimal)
+         ("libtool" ,libtool)
+         ("pkg-config" ,pkg-config)))
+      (build-system gnu-build-system)
+      (synopsis "C implementation of the Raft consensus protocol")
+      (description "The library has modular design: its core part implements only
+  the core Raft algorithm logic, in a fully platform independent way.  On top of
+  that, a pluggable interface defines the I/O implementation for networking
+  (send/receive RPC messages) and disk persistence (store log entries and
+  snapshots).")
+      (license license:asl2.0)))
+
+  (define-public libcowsql
+    (package
+      (name "libcowsql")
+      (version "1.15.4")
+      (home-page "https://github.com/cowsql/cowsql")
+      (source (origin
+                (method git-fetch)
+                (uri (git-reference (url home-page)
+                                    (commit (string-append "v" version))))
+                (file-name (git-file-name name version))
+                (sha256
+                 (base32 "078fgvzsiwr5c36kxq8s53jhxbwp65nbag6k15m4ib6fcp0y5ci5"))))
+      (arguments
+       '(#:phases
+         (modify-phases %standard-phases
+           (add-after 'unpack 'disable-failing-tests
+             (lambda _
+               (substitute* "Makefile.am"
+                 ;; Test client/query sometimes fails.
+                 ;; The actual tested asserts succeed, but there appears to be a
+                 ;; race condition when tearing down the test server.
+  			  ((".*test_role_management.c.*") "")))))))
+      (native-inputs
+       (list autoconf automake libtool pkg-config))
+      (inputs
+       (list libraft libuv))
+      (propagated-inputs
+       (list sqlite))  ; dqlite.h includes sqlite3.h
+      (build-system gnu-build-system)
+      (synopsis "Distributed SQLite")
+      (description "cowsql is a fork of Canonical's dqlite project, which was originally written by cowsql's author himself while working at Canonical. dqlite is a C library that implements an embeddable and replicated SQL database engine with high-availability and automatic failover.")
+      (license license:lgpl3)))
+#+end_src
+
+** 
+
+#+begin_src scheme :tangle ../packages/dru/packages/virtualization.scm
+      ;;; DRU Druix --- Functional package management for GNU
+      ;;; Copyright © 2024 Drew Crampsie <me@drewc.ca>
+      ;;;
+      ;;; This file is part of DRU Druix.
+      ;;;
+      ;;; DRU Druix is free software; you can redistribute it and/or modify it
+      ;;; under the terms of the GNU General Public License as published by
+      ;;; the Free Software Foundation; either version 3 of the License, or (at
+      ;;; your option) any later version.
+      ;;;
+      ;;; DRU Druix is distributed in the hope that it will be useful, but
+      ;;; WITHOUT ANY WARRANTY; without even the implied warranty of
+      ;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+      ;;; GNU General Public License for more details.
+      ;;;
+      ;;; You should have received a copy of the GNU General Public License
+      ;;; along with DRU Druix.  If not, see <http://www.gnu.org/licenses/>.
+
+      (define-module (dru packages virtualization) 
+        #:use-module ((dru packages cluster) #:prefix dc:)
+        #:use-module ((gnu packages virtualization) #:prefix v:)
+        #:use-module (guix packages)
+       #:use-module (guix download)
+       #:use-module (guix git-download)
+       #:use-module (guix build-system go)
+      #:use-module ((guix licenses) #:prefix license:)
+      #:use-module (gnu packages acl)
+      #:use-module (gnu packages attr)
+      #:use-module (gnu packages autotools)
+      #:use-module (gnu packages cluster)
+      #:use-module (gnu packages linux)
+      #:use-module (gnu packages bash)
+      #:use-module (gnu packages rsync)
+      #:use-module (gnu packages base)
+      #:use-module (gnu packages sqlite)
+      #:use-module (gnu packages compression)
+      #:use-module (gnu packages dns)
+      #:use-module (gnu packages pkg-config)
+     #:use-module (gnu packages build-tools)
+     #:use-module (gnu packages libevent)
+        )
+  (define-public go-github-com-lxc-lxd
+    (package
+      (name "go-github-com-lxc-lxd")
+      (version "0.6.0")
+      (source
+       (origin
+         (method git-fetch)
+         (uri (git-reference
+               (url "https://github.com/lxc/incus")
+               (commit (string-append "v" version))))
+         (file-name (git-file-name name version))
+         (sha256
+          (base32 "0jpzp32cjd6jhpjhzqz62rk06c7ia14hmrivz4dqdgjr955q0sxl"))))
+      (build-system go-build-system)
+      (arguments
+       (list
+        #:go 1.21
+        #:import-path "github.com/lxc/lxd"))
+      (propagated-inputs `(("go-k8s-io-utils" ,go-k8s-io-utils)
+                            ("go-gopkg-in-yaml-v2" ,go-gopkg-in-yaml-v2)
+                           ("go-gopkg-in-tomb-v2" ,go-gopkg-in-tomb-v2)
+                           ("go-google-golang-org-protobuf" ,go-google-golang-org-protobuf)
+                           ("go-golang-org-x-text" ,go-golang-org-x-text)
+                           ("go-golang-org-x-term" ,go-golang-org-x-term)
+                           ("go-golang-org-x-sys" ,go-golang-org-x-sys)
+                           ("go-golang-org-x-sync" ,go-golang-org-x-sync)
+                           ("go-golang-org-x-oauth2" ,go-golang-org-x-oauth2)
+                           ("go-golang-org-x-crypto" ,go-golang-org-x-crypto)
+                           ("go-go-starlark-net" ,go-go-starlark-net)
+                           ("go-github-com-zitadel-oidc-v2" ,go-github-com-zitadel-oidc-v2)
+                           ("go-github-com-vishvananda-netlink" ,go-github-com-vishvananda-netlink)
+                           ("go-github-com-syndtr-gocapability" ,go-github-com-syndtr-gocapability)
+                           ("go-github-com-stretchr-testify" ,go-github-com-stretchr-testify)
+                           ("go-github-com-spf13-cobra" ,go-github-com-spf13-cobra)
+                           ("go-github-com-sirupsen-logrus" ,go-github-com-sirupsen-logrus)
+                           ("go-github-com-robfig-cron-v3" ,go-github-com-robfig-cron-v3)
+                           ("go-github-com-pkg-xattr" ,go-github-com-pkg-xattr)
+                           ("go-github-com-pkg-sftp" ,go-github-com-pkg-sftp)
+                           ("go-github-com-pierrec-lz4-v4" ,go-github-com-pierrec-lz4-v4)
+                           ("go-github-com-ovn-org-libovsdb" ,go-github-com-ovn-org-libovsdb)
+                           ("go-github-com-osrg-gobgp-v3" ,go-github-com-osrg-gobgp-v3)
+                           ("go-github-com-openfga-go-sdk" ,go-github-com-openfga-go-sdk)
+                           ("go-github-com-olekukonko-tablewriter" ,go-github-com-olekukonko-tablewriter)
+                           ("go-github-com-mitchellh-mapstructure" ,go-github-com-mitchellh-mapstructure)
+                           ("go-github-com-minio-minio-go-v7" ,go-github-com-minio-minio-go-v7)
+                           ("go-github-com-minio-madmin-go" ,go-github-com-minio-madmin-go)
+                           ("go-github-com-miekg-dns" ,go-github-com-miekg-dns)
+                           ("go-github-com-mdlayher-vsock" ,go-github-com-mdlayher-vsock)
+                           ("go-github-com-mdlayher-netx" ,go-github-com-mdlayher-netx)
+                           ("go-github-com-mdlayher-ndp" ,go-github-com-mdlayher-ndp)
+                           ("go-github-com-mattn-go-sqlite3" ,go-github-com-mattn-go-sqlite3)
+                           ("go-github-com-mattn-go-colorable" ,go-github-com-mattn-go-colorable)
+                           ("go-github-com-lxc-go-lxc" ,go-github-com-lxc-go-lxc)
+                           ("go-github-com-kballard-go-shellquote" ,go-github-com-kballard-go-shellquote)
+                           ("go-github-com-jochenvg-go-udev" ,go-github-com-jochenvg-go-udev)
+                           ("go-github-com-jaypipes-pcidb" ,go-github-com-jaypipes-pcidb)
+                           ("go-github-com-j-keck-arping" ,go-github-com-j-keck-arping)
+                           ("go-github-com-gosexy-gettext" ,go-github-com-gosexy-gettext)
+                           ("go-github-com-gorilla-websocket" ,go-github-com-gorilla-websocket)
+                           ("go-github-com-gorilla-mux" ,go-github-com-gorilla-mux)
+                           ("go-github-com-google-uuid" ,go-github-com-google-uuid)
+                           ("go-github-com-google-gopacket" ,go-github-com-google-gopacket)
+                           ("go-github-com-go-logr-logr" ,go-github-com-go-logr-logr)
+                           ("go-github-com-go-acme-lego-v4" ,go-github-com-go-acme-lego-v4)
+                           ("go-github-com-fvbommel-sortorder" ,go-github-com-fvbommel-sortorder)
+                           ("go-github-com-flosch-pongo2" ,go-github-com-flosch-pongo2)
+                           ("go-github-com-dustinkirkland-golang-petname" ,go-github-com-dustinkirkland-golang-petname)
+                           ("go-github-com-digitalocean-go-smbios" ,go-github-com-digitalocean-go-smbios)
+                           ("go-github-com-digitalocean-go-qemu" ,go-github-com-digitalocean-go-qemu)
+                           ("go-github-com-cowsql-go-cowsql" ,go-github-com-cowsql-go-cowsql)
+                           ("go-github-com-checkpoint-restore-go-criu-v6" ,go-github-com-checkpoint-restore-go-criu-v6)
+                           ("go-github-com-armon-go-proxyproto" ,go-github-com-armon-go-proxyproto)
+                           ("go-github-com-rican7-retry" ,go-github-com-rican7-retry)))
+      (home-page "https://github.com/lxc/lxd")
+      (synopsis "LXD")
+      (description
+       "LXD is a modern, secure and powerful system container and virtual machine
+  manager.")
+      (license license:asl2.0)))
+  
+    (define-public incus
+        (package
+         (name "incus")
+         (version "0.6")
+         (source (origin
+                  (method url-fetch)
+                  (uri (string-append
+                        "https://github.com/lxc/incus/releases/download/"
+                        "v" version
+      		  (let ((dots (string-fold (lambda (c kdr) (if (char=? c #\.) (cons c kdr) kdr)) '() version)))
+      		    (if (= (length dots) 1) ".0" ""))
+      		  "/incus-" version ".tar.gz"))
+                  (sha256
+                   (base32
+                    "0lmjmvm98m6yjxcqlfw690i71nazfzgrm3mzbjj77g1631df3ylp"))))
+         (build-system go-build-system)
+         (arguments
+             `(#:import-path "github.com/lxc/incus"
+      	   #:tests? #f ;; tests fail due to missing /var, cgroups, etc.
+      	   #:modules ((guix build go-build-system)
+                          (guix build union)
+                          (guix build utils)
+                          (srfi srfi-1))
+      	 #:phases
+      	 (modify-phases %standard-phases
+      			#;(add-after 'unpack 'unpack-dist
+      				   (lambda* (#:key import-path #:allow-other-keys)
+    					   ; (invoke "head" "-n1" "src/github.com/lxc/incus/vendor/raft/configure")
+    					    ;(invoke "exit" "38")
+      					    #;(with-directory-excursion (string-append "src/" import-path)
+      								      ;; Move all the dependencies into the src directory.
+      								      (copy-recursively "_dist/src" "../../.."))))
+      			(replace 'build
+      				 (lambda* (#:key inputs import-path #:allow-other-keys)
+      					  (with-directory-excursion (string-append "src/" import-path)
+    								 ;   (invoke "echo" "here!")
+    								 ;   (invoke (string-append (assoc-ref inputs "bash-minimal") "/bin/bash") "-c" "echo got it")
+      								    (invoke "make" "build" "CC=gcc"))))
+      		#;	(replace 'check
+      				 (lambda* (#:key tests? import-path #:allow-other-keys)
+      					  (when tests?
+      					    (with-directory-excursion (string-append "src/" import-path)
+      								      (invoke "make" "check" "CC=gcc" "TAG_SQLITE3=libsqlite3")))))
+      			#;(replace 'install
+      				 (lambda* (#:key inputs outputs import-path #:allow-other-keys)
+      					  (let* ((out (assoc-ref outputs "out"))
+      						 (bin-dir
+      						  (string-append out "/bin/"))
+      						 (doc-dir
+      						  (string-append out "/share/doc/lxd-" ,version))
+      						 (completions-dir
+      						  (string-append out "/share/bash-completion/completions")))
+      					    (with-directory-excursion (string-append "src/" import-path)
+      								      ;; Wrap lxd with run-time dependencies.
+      								      (wrap-program (string-append bin-dir "lxd")
+      										    `("PATH" ":" prefix
+      										      ,(fold (lambda (input paths)
+      											       ;; TODO: Use 'search-input-directory' rather
+      											       ;; than look up inputs by name.
+      											       (let* ((in (assoc-ref inputs input))
+      												      (bin (string-append in "/bin"))
+      												      (sbin (string-append in "/sbin")))
+      												 (append (filter file-exists?
+      														 (list bin sbin)) paths)))
+      											     '()
+      											     '("bash-minimal" "acl" "rsync" "tar" "xz" "btrfs-progs"
+      											       "gzip" "dnsmasq" "squashfs-tools" "iproute2"
+      											       "criu" "iptables" "attr"))))
+      								      ;; Remove unwanted binaries.
+      								      (for-each (lambda (prog)
+      										  (delete-file (string-append bin-dir prog)))
+      										'("deps" "macaroon-identity" "generate"))
+      								      ;; Install documentation.
+      								      (for-each (lambda (file)
+      										  (install-file file doc-dir))
+      										(find-files "doc"))
+      								      ;; Install bash completion.
+      								      (rename-file "scripts/bash/lxd-client" "scripts/bash/lxd")
+      								      (install-file "scripts/bash/lxd" completions-dir))))))))
+         (native-inputs
+          (list ;; Test dependencies:
+           ;; ("go-github-com-rogpeppe-godeps" ,go-github-com-rogpeppe-godeps)
+           ;; ("go-github-com-tsenart-deadcode" ,go-github-com-tsenart-deadcode)
+           ;; ("go-golang-org-x-lint" ,go-golang-org-x-lint)
+           pkg-config))
+         (inputs
+          (list acl
+                eudev
+                dc:libcowsql
+                dc:libraft
+                libcap
+                v:lxc
+    	    autoconf
+    	    automake
+    	    libtool
+    	    sqlite
+    	    libuv
+                ;; Run-time dependencies.
+                attr
+                bash-minimal
+                rsync
+                tar
+                xz
+                btrfs-progs
+                gzip
+                dnsmasq
+                squashfs-tools
+                iproute
+                v:criu
+                iptables))
+         (synopsis "Daemon based on  a liblxc with a REST API to manage containers")
+         (home-page "https://linuxcontainers.org/incus/")
+         (description "Incus is a next generation system container manager.  It
+      offers a user experience similar to virtual machines but using Linux
+      containers instead.  It's image based with pre-made images available for a
+      wide number of Linux distributions and is built around a very powerful, yet
+      pretty simple, REST API.")
+         (license license:asl2.0))
+
+        )
+
+
+       
+
+#+end_src
+
+
+** [[https://guix.gnu.org/manual/en/html_node/Defining-Package-Variants.html][Defining Package Variants (GNU Guix Reference Manual)]] :website:
+
+One of the nice things with Guix is that, given a package definition,
+you can easily /derive/ variants of that package---for a different
+upstream version, with different dependencies, different compilation
+options, and so on. Some of these custom packages can be defined
+straight from the command line (see [[file:Package-Transformation-Options.html][Package Transformation
+Options]]). This section describes how to define package variants in
+code. This can be useful in “manifests” (see [[file:Writing-Manifests.html][Writing Manifests]]) and in
+your own package collection (see [[file:Creating-a-Channel.html][Creating a Channel]]), among others!
+
+<<index-inherit_002c-for-package-definitions>>
+
+As discussed earlier, packages are first-class objects in the Scheme language. The =(guix packages)= module provides the =package= construct to define new package objects (see [[file:package-Reference.html][=package= Reference]]). The easiest way to define a package variant is using the =inherit= keyword together with =package=. This allows you to inherit from a package definition while overriding the fields you want.
+
+For example, given the =hello= variable, which contains a definition for the current version of GNU Hello, here's how you would define a variant for version 2.2 (released in 2006, it's vintage!):
+
+#+begin_src lisp
+ (  use-modules  (  gnu  packages  base))     ;for 'hello'
+
+ (  define  hello-2.2
+   (  package
+     (  inherit  hello)
+     (  version  "2.2")
+     (  source  (  origin
+               (  method  url-fetch)
+               (  uri  (  string-append  "mirror://gnu/hello/hello-"  version
+                                   ".tar.gz"))
+               (  sha256
+                (  base32
+                 "0lappv4slgb5spyqbh6yl5r013zv72yqg2pcl30mginf3wdqd8k9"))))))
+#+end_src
+
+The example above corresponds to what the =--with-source= package transformation option does. Essentially =hello-2.2= preserves all the fields of =hello=, except =version= and =source=, which it overrides. Note that the original =hello= variable is still there, in the =(gnu packages base)= module, unchanged. When you define a custom package like this, you are really /adding/ a new package definition; the original one remains available.
+
+You can just as well define variants with a different set of dependencies than the original package. For example, the default =gdb= package depends on =guile=, but since that is an optional dependency, you can define a variant that removes that dependency like so:
+
+#+begin_src lisp
+ (  use-modules  (  gnu  packages  gdb))    ;for 'gdb'
+
+ (  define  gdb-sans-guile
+   (  package
+     (  inherit  gdb)
+     (  inputs  (  modify-inputs  (  package-inputs  gdb)
+               (  delete  "guile")))))
+#+end_src
+
+The =modify-inputs= form above removes the ="guile"= package from the =inputs= field of =gdb=. The =modify-inputs= macro is a helper that can prove useful anytime you want to remove, add, or replace package inputs.
+
+- Scheme Syntax: modify-inputs =inputs= =clauses= :: Modify the given package inputs, as returned by =package-inputs= & co., according to the given clauses. Each clause must have one of the following forms:
+
+  -  =(delete ==name==…)= :: Delete from the inputs packages with the given =name=s (strings).
+
+  -  =(prepend ==package==…)= :: Add =package=s to the front of the input list.
+
+  -  =(append ==package==…)= :: Add =package=s to the end of the input list.
+
+  The example below removes the GMP and ACL inputs of Coreutils and adds libcap to the front of the input list:
+
+  #+begin_src lisp
+   (  modify-inputs  (  package-inputs  coreutils)
+     (  delete  "gmp"  "acl")
+     (  prepend  libcap))
+  #+end_src
+
+  The example below replaces the =guile= package from the inputs of =guile-redis= with =guile-2.2=:
+
+  #+begin_src lisp
+   (  modify-inputs  (  package-inputs  guile-redis)
+     (  replace  "guile"  guile-2.2))
+  #+end_src
+
+  The last type of clause is =append=, to add inputs at the back of the list.
+
+In some cases, you may find it useful to write functions (“procedures”, in Scheme parlance) that return a package based on some parameters. For example, consider the =luasocket= library for the Lua programming language. We want to create =luasocket= packages for major versions of Lua. One way to do that is to define a procedure that takes a Lua package and returns a =luasocket= package that depends on it:
+
+#+begin_src lisp
+ (  define  (  make-lua-socket  name  lua)
+   ;; Return a luasocket package built with LUA.
+   (  package
+     (  name  name)
+     (  version  "3.0")
+     ;; several fields omitted
+     (  inputs  (  list  lua))
+     (  synopsis  "Socket library for Lua")))
+
+ (  define-public  lua5.1-socket
+   (  make-lua-socket  "lua5.1-socket"  lua-5.1))
+
+ (  define-public  lua5.2-socket
+   (  make-lua-socket  "lua5.2-socket"  lua-5.2))
+#+end_src
+
+Here we have defined packages =lua5.1-socket= and =lua5.2-socket= by calling =make-lua-socket= with different arguments. See [[https://www.gnu.org/software/guile/manual/html_node/Procedures.html#Procedures][Procedures]] in GNU Guile Reference Manual, for more info on procedures. Having top-level public definitions for these two packages means that they can be referred to from the command line (see [[file:Package-Modules.html][Package Modules]]).
+
+<<index-package-transformations>>
+
+These are pretty simple package variants. As a convenience, the =(guix transformations)= module provides a high-level interface that directly maps to the more sophisticated package transformation options (see [[file:Package-Transformation-Options.html][Package Transformation Options]]):
+
+- Scheme Procedure: options->transformation =opts= :: Return a procedure that, when passed an object to build (package, derivation, etc.), applies the transformations specified by =opts= and returns the resulting objects. =opts= must be a list of symbol/string pairs such as:
+
+  #+begin_src lisp
+   (  (  with-branch  .  "guile-gcrypt=master")
+    (  without-tests  .  "libgcrypt"))
+  #+end_src
+
+  Each symbol names a transformation and the corresponding string is an argument to that transformation.
+
+For instance, a manifest equivalent to this command:
+
+#+begin_example
+guix build guix \
+  --with-branch=guile-gcrypt=master \
+  --with-debug-info=zlib
+#+end_example
+
+... would look like this:
+
+#+begin_src lisp
+ (  use-modules  (  guix  transformations))
+
+ (  define  transform
+   ;; The package transformation procedure.
+   (  options->transformation
+    ' (  (  with-branch  .  "guile-gcrypt=master")
+      (  with-debug-info  .  "zlib"))))
+
+ (  packages->manifest
+  (  list  (  transform  (  specification->package  "guix"))))
+#+end_src
+
+<<index-input-rewriting>> <<index-dependency-graph-rewriting>>
+
+The =options->transformation= procedure is convenient, but it's perhaps also not as flexible as you may like. How is it implemented? The astute reader probably noticed that most package transformation options go beyond the superficial changes shown in the first examples of this section: they involve /input rewriting/, whereby the dependency graph of a package is rewritten by replacing specific inputs by others.
+
+Dependency graph rewriting, for the purposes of swapping packages in the graph, is what the =package-input-rewriting= procedure in =(guix packages)= implements.
+
+- Scheme Procedure: package-input-rewriting =replacements= [ =rewrite-name=] [#:deep? #t] :: Return a procedure that, when passed a package, replaces its direct and indirect dependencies, including implicit inputs when =deep?= is true, according to =replacements=. =replacements= is a list of package pairs; the first element of each pair is the package to replace, and the second one is the replacement.
+
+  Optionally, =rewrite-name= is a one-argument procedure that takes the name of a package and returns its new name after rewrite.
+
+Consider this example:
+
+#+begin_src lisp
+ (  define  libressl-instead-of-openssl
+   ;; This is a procedure to replace OPENSSL by LIBRESSL,
+   ;; recursively.
+   (  package-input-rewriting  ` (  (  ,openssl  .  ,libressl))))
+
+ (  define  git-with-libressl
+   (  libressl-instead-of-openssl  git))
+#+end_src
+
+Here we first define a rewriting procedure that replaces =openssl= with =libressl=. Then we use it to define a /variant/ of the =git= package that uses =libressl= instead of =openssl=. This is exactly what the =--with-input= command-line option does (see [[file:Package-Transformation-Options.html][=--with-input=]]).
+
+The following variant of =package-input-rewriting= can match packages to be replaced by name rather than by identity.
+
+- Scheme Procedure: package-input-rewriting/spec =replacements= [#:deep? #t] :: Return a procedure that, given a package, applies the given =replacements= to all the package graph, including implicit inputs unless =deep?= is false. =replacements= is a list of spec/procedures pair; each spec is a package specification such as ="gcc"= or ="guile@2"=, and each procedure takes a matching package and returns a replacement for that package.
+
+The example above could be rewritten this way:
+
+#+begin_src lisp
+ (  define  libressl-instead-of-openssl
+   ;; Replace all the packages called "openssl" with LibreSSL.
+   (  package-input-rewriting/spec  ` (  (  "openssl"  .  , (  const  libressl)))))
+#+end_src
+
+The key difference here is that, this time, packages are matched by spec and not by identity. In other words, any package in the graph that is called =openssl= will be replaced.
+
+A more generic procedure to rewrite a package dependency graph is =package-mapping=: it supports arbitrary changes to nodes in the graph.
+
+- Scheme Procedure: package-mapping =proc= [ =cut?=] [#:deep? #f] :: Return a procedure that, given a package, applies =proc= to all the packages depended on and returns the resulting package. The procedure stops recursion when =cut?= returns true for a given package. When =deep?= is true, =proc= is applied to implicit inputs as well.
+** =(gnu packages virtualization)=
+
+I do this.
+#+begin_src sh :output verbatim :wrap src scheme
+guix edit lxd
+#+end_src
+
+That brings me this.
+
+#+begin_src scheme
+  (define-public lxd
+  (package
+    (name "lxd")
+    (version "4.24")
+    (source (origin
+              (method url-fetch)
+              (uri (string-append
+                    "https://github.com/lxc/lxd/releases/download/"
+                    "lxd-" version "/lxd-" version ".tar.gz"))
+              (sha256
+               (base32
+                "0lmjmvm98m6yjxcqlfw690i71nazfzgrm3mzbjj77g1631df3ylp"))))
+    (build-system go-build-system)
+    (arguments
+     `(#:import-path "github.com/lxc/lxd"
+       #:tests? #f ;; tests fail due to missing /var, cgroups, etc.
+       #:modules ((guix build go-build-system)
+                  (guix build union)
+                  (guix build utils)
+                  (srfi srfi-1))
+       #:phases
+       (modify-phases %standard-phases
+         (add-after 'unpack 'unpack-dist
+           (lambda* (#:key import-path #:allow-other-keys)
+             (with-directory-excursion (string-append "src/" import-path)
+               ;; Move all the dependencies into the src directory.
+               (copy-recursively "_dist/src" "../../.."))))
+         (replace 'build
+           (lambda* (#:key import-path #:allow-other-keys)
+             (with-directory-excursion (string-append "src/" import-path)
+               (invoke "make" "build" "CC=gcc" "TAG_SQLITE3=libsqlite3"))))
+         (replace 'check
+           (lambda* (#:key tests? import-path #:allow-other-keys)
+             (when tests?
+               (with-directory-excursion (string-append "src/" import-path)
+                 (invoke "make" "check" "CC=gcc" "TAG_SQLITE3=libsqlite3")))))
+         (replace 'install
+           (lambda* (#:key inputs outputs import-path #:allow-other-keys)
+             (let* ((out (assoc-ref outputs "out"))
+                    (bin-dir
+                     (string-append out "/bin/"))
+                    (doc-dir
+                     (string-append out "/share/doc/lxd-" ,version))
+                    (completions-dir
+                     (string-append out "/share/bash-completion/completions")))
+               (with-directory-excursion (string-append "src/" import-path)
+                 ;; Wrap lxd with run-time dependencies.
+                 (wrap-program (string-append bin-dir "lxd")
+                   `("PATH" ":" prefix
+                     ,(fold (lambda (input paths)
+                              ;; TODO: Use 'search-input-directory' rather
+                              ;; than look up inputs by name.
+                              (let* ((in (assoc-ref inputs input))
+                                     (bin (string-append in "/bin"))
+                                     (sbin (string-append in "/sbin")))
+                                (append (filter file-exists?
+                                                (list bin sbin)) paths)))
+                            '()
+                            '("bash-minimal" "acl" "rsync" "tar" "xz" "btrfs-progs"
+                              "gzip" "dnsmasq" "squashfs-tools" "iproute2"
+                              "criu" "iptables" "attr"))))
+                 ;; Remove unwanted binaries.
+                 (for-each (lambda (prog)
+                             (delete-file (string-append bin-dir prog)))
+                           '("deps" "macaroon-identity" "generate"))
+                 ;; Install documentation.
+                 (for-each (lambda (file)
+                             (install-file file doc-dir))
+                           (find-files "doc"))
+                 ;; Install bash completion.
+                 (rename-file "scripts/bash/lxd-client" "scripts/bash/lxd")
+                 (install-file "scripts/bash/lxd" completions-dir))))))))
+    (native-inputs
+     (list ;; Test dependencies:
+           ;; ("go-github-com-rogpeppe-godeps" ,go-github-com-rogpeppe-godeps)
+           ;; ("go-github-com-tsenart-deadcode" ,go-github-com-tsenart-deadcode)
+           ;; ("go-golang-org-x-lint" ,go-golang-org-x-lint)
+           pkg-config))
+    (inputs
+     (list acl
+           eudev
+           libdqlite
+           libraft
+           libcap
+           lxc
+           ;; Run-time dependencies.
+           attr
+           bash-minimal
+           rsync
+           tar
+           xz
+           btrfs-progs
+           gzip
+           dnsmasq
+           squashfs-tools
+           iproute
+           criu
+           iptables))
+    (synopsis "Daemon based on liblxc offering a REST API to manage containers")
+    (home-page "https://linuxcontainers.org/lxd/")
+    (description "LXD is a next generation system container manager.  It
+offers a user experience similar to virtual machines but using Linux
+containers instead.  It's image based with pre-made images available for a
+wide number of Linux distributions and is built around a very powerful, yet
+pretty simple, REST API.")
+    (license license:asl2.0)))
+#+end_src

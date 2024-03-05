@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       99fc01a4-a193-454b-835a-e012a5ea660b
+:END:
+#+title: debootstrap
+
+Trying to build/install/work with existing [[id:5304d273-ba4c-45c2-8a83-281ff0c0e66d][Incus]] packages led me
+here. I just want a working virtual thing!
+
+https://wiki.archlinux.org/title/Chroot#Using_chroot
+
+https://arraybolt3.substack.com/p/making-hyper-minimal-ubuntu-virtual
+
+#+begin_src sh
+  guix install debootstrap debianutils
+
+  mkdir -p ./chroot/jammy
+  sudo env -i - PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin" \
+  $(which debootstrap) --arch=amd64 jammy ./chroot/jammy http://archive.ubuntu.com/ubuntu/
+  sudo sed -i 's|#!/gnu.*$|#!/bin/sh|' chroot/jammy/debootstrap/debootstrap
+  cd ./chroot/jammy
+  sudo bash <<'EOF'
+  mount -t proc /proc proc/
+  mount --rbind /sys sys/
+  mount --rbind /dev dev/
+  mount --rbind /dev/pts dev/pts
+  cp /etc/resolv.conf etc/resolv.conf
+  EOF
+  cd -
+
+
+#+end_src
+
