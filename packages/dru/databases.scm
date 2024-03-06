@@ -280,3 +280,27 @@ pictures, sounds, or video.")
    (description "PL/sh is a procedural language handler for PostgreSQL that allows you
 to write stored procedures in a shell of your choice. ")
    (license (list license:expat))))
+
+(define (final-postgresql postgresql extension-packages)
+  (if (null? extension-packages)
+    postgresql
+    (package
+      (inherit postgresql)
+      (source #f)
+      (build-system trivial-build-system)
+      (arguments
+       `(#:modules ((guix build utils) (guix build union))
+         #:builder
+         (begin
+           (use-modules (guix build utils) (guix build union) (srfi srfi-26))
+           (union-build (assoc-ref %outputs "out")
+                        (map (lambda (input) (cdr input))
+                             %build-inputs))
+           #t)))
+      (inputs
+       `(("postgresql" ,postgresql)
+         ,@(map (lambda (extension) (list "extension" extension))
+                extension-packages))))))
+
+(define-public postgresql-16-plus-plsh
+  (final-postgresql postgresql-16 (list plsh)))
