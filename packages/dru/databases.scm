@@ -273,7 +273,7 @@ pictures, sounds, or video.")
             (string-append "bindir=" (assoc-ref %outputs "out") "/bin"))
       #:phases
       (modify-phases %standard-phases (delete 'configure))))
-    (inputs (list postgresql))
+    (inputs (list postgresql-16))
     #;(native-inputs (list perl pkg-config))
    (home-page "https://github.com/petere/plsh")
    (synopsis "Procedural language handler for PostgreSQL")
