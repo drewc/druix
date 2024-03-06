@@ -1,0 +1,7 @@
+This is where all the local packages live.
+
+  - dru/ :: Software not part of the system /per se/.
+  - druix/ :: Software part of the druix/guix system
+  - gnu/ :: Things under this subdir are meant to be and/or replace upstream
+  - guix/ :: Things under this subdir are meant to be and/or replace upstream
+    

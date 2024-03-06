@@ -30,24 +30,25 @@ ie:
 guix install -L ~/me/guix/src/druix/ gambit-c-unstable
 #+end_src
 
-* dot Guix Channel
-
+* dotChannel
 #+begin_src scheme :tangle .guix-channel
-   (channel
-    (version 1)
-    (directory "packages")
-    (dependencies
-     (channel
-      (name nonguix)
-      (url "https://gitlab.com/nonguix/nonguix"))))
+  (channel
+   (version 0)
+   (directory "packages")
+   (dependencies
+    (channel
+     (name nonguix)
+     (url "https://gitlab.com/nonguix/nonguix"))))
 
 #+end_src
-
 * Package modules
 
 This is what really matters, non? :)
 
 All of the [[info:guix#Package Modules in a Sub-directory][Package Modules]] are in a [[file:packages/README.org][Sub-Directory]].
+
+
+
 
 * Services
 
