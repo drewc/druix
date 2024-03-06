@@ -80,6 +80,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (dru databases)
+  #:use-module (gnu packages databases)
   #:use-module (gnu packages)
   #:use-module (gnu packages admin)
   #:use-module (gnu packages algebra)
@@ -157,9 +158,6 @@
   #:use-module (gnu packages serialization)
   #:use-module (gnu packages sphinx)
   #:use-module (gnu packages ssh)
-  #:use-module (gnu packages sqlite)
-  #:use-module (gnu packages syncthing)           ;for go-github-com-lib-pq
-  #:use-module (gnu packages tcl)
   #:use-module (gnu packages terminals)
   #:use-module (gnu packages texinfo)
   #:use-module (gnu packages textutils)
@@ -255,3 +253,30 @@ TIMESTAMP.  It also supports storage of binary large objects, including
 pictures, sounds, or video.")
     (license (license:x11-style "file://COPYRIGHT"))))
 
+(define-public plsh
+  (package
+   (name "plsh")
+   (version "1.20220917")
+   (source (origin
+            (method url-fetch)
+            (uri (string-append  "https://github.com/petere/plsh/archive/refs/tags/"
+                                 version ".tar.gz"))
+            (sha256
+             (base32 "1nyamw8ci3ifcylncm3p70rkc25ln82l1w9wm50gsml7m742djag"))))
+   (build-system gnu-build-system)
+   (arguments
+    `(#:tests? #f
+      #:make-flags
+      (list (string-append "datadir=" (assoc-ref %outputs "out") "/share")
+            (string-append "docdir="(assoc-ref %outputs "out") "/share/doc")
+            (string-append "pkglibdir="(assoc-ref %outputs "out") "/lib")
+            (string-append "bindir=" (assoc-ref %outputs "out") "/bin"))
+      #:phases
+      (modify-phases %standard-phases (delete 'configure))))
+    (inputs (list postgresql))
+    #;(native-inputs (list perl pkg-config))
+   (home-page "https://github.com/petere/plsh")
+   (synopsis "Procedural language handler for PostgreSQL")
+   (description "PL/sh is a procedural language handler for PostgreSQL that allows you
+to write stored procedures in a shell of your choice. ")
+   (license (list license:expat))))
