@@ -1258,7 +1258,7 @@ and high-availability (HA).")
 (define-public postgresql-16
   (package
     (name "postgresql")
-    (version "15.4")
+    (version "16.0")
     (source (origin
               (method url-fetch)
               (uri (string-append "https://ftp.postgresql.org/pub/source/v"
