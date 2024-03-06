@@ -203,9 +203,8 @@
               (uri (string-append "https://ftp.postgresql.org/pub/source/v"
                                   version "/postgresql-" version ".tar.bz2"))
               (sha256
-               (base32
-                "1yf8cfg9j2pfxh5lxfaq1ifbvrcvv2g5vjxnadk36ds4vi5mmv5s"))
-              (patches (search-patches "postgresql-disable-resolve_symlinks.patch"))))
+               (base32 "0li9kfnybhkilrg1slh3xi5lnq7s8sk62w2bmf2r0b5w9llqhvj4"))
+              #;(patches (search-patches "postgresql-disable-resolve_symlinks.patch"))))
     (build-system gnu-build-system)
     (arguments
      (list
@@ -243,8 +242,8 @@
                 (invoke "make" "postgres.info")
                 (install-file "postgres.info"
                               (string-append #$output "/share/info"))))))))
-    (native-inputs (list docbook-xml-4.5 docbook2x libxml2 perl texinfo))
-    (inputs (list readline `(,util-linux "lib") openssl zlib))
+    (native-inputs (list pkg-config icu4c docbook-xml-4.5 docbook2x libxml2 perl texinfo))
+    (inputs (list readline `(,util-linux "lib") icu4c openssl zlib))
     (home-page "https://www.postgresql.org/")
     (synopsis "Powerful object-relational database system")
     (description
