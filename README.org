@@ -39,14 +39,12 @@ guix install -L ~/me/guix/src/druix/ gambit-c-unstable
     (channel
      (name nonguix)
      (url "https://gitlab.com/nonguix/nonguix"))))
-
 #+end_src
 * Package modules
 
 This is what really matters, non? :)
 
 All of the [[info:guix#Package Modules in a Sub-directory][Package Modules]] are in a [[file:packages/README.org][Sub-Directory]].
-
 
 
 
